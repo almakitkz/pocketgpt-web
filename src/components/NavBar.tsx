@@ -11,6 +11,7 @@ const NAV_TEXT = {
     home: "Главная",
     dashboard: "Кабинет",
     pair: "Привязка",
+    billing: "Billing",
     login: "Войти",
     signup: "Регистрация",
     logout: "Выйти",
@@ -19,6 +20,7 @@ const NAV_TEXT = {
     home: "Home",
     dashboard: "Dashboard",
     pair: "Pair",
+    billing: "Billing",
     login: "Login",
     signup: "Signup",
     logout: "Logout",
@@ -122,15 +124,16 @@ export default function NavBar() {
 
         {ready && isAuthed ? (
           <>
-            <Link
-              href="/dashboard"
-              style={{ color: "white", textDecoration: "none" }}
-            >
+            <Link href="/dashboard" style={{ color: "white", textDecoration: "none" }}>
               {t.dashboard}
             </Link>
 
             <Link href="/pair" style={{ color: "white", textDecoration: "none" }}>
               {t.pair}
+            </Link>
+
+            <Link href="/billing" style={{ color: "white", textDecoration: "none" }}>
+              {t.billing}
             </Link>
 
             <button
