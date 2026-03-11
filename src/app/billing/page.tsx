@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getToken, getUser } from "@/lib/auth";
 
@@ -47,6 +47,10 @@ type DeviceItem = {
     status: string | null;
     trialEnd: string | null;
     currentPeriodEnd: string | null;
+    stripeSubscriptionId?: string | null;
+    stripePriceId?: string | null;
+    createdAt?: string | null;
+    updatedAt?: string | null;
   };
 };
 
@@ -54,6 +58,28 @@ type LocalUser = {
   id: string;
   email: string;
 };
+
+type PayPalButtonsInstance = {
+  render: (container: HTMLElement) => Promise<void> | void;
+  close?: () => Promise<void> | void;
+  isEligible?: () => boolean;
+};
+
+type PayPalNamespace = {
+  Buttons: (config: {
+    createOrder: () => Promise<string>;
+    onApprove: (data: { orderID?: string }) => Promise<void>;
+    onError?: (err: unknown) => void;
+    onCancel?: () => void;
+    style?: Record<string, unknown>;
+  }) => PayPalButtonsInstance;
+};
+
+declare global {
+  interface Window {
+    paypal?: PayPalNamespace;
+  }
+}
 
 const TEXT = {
   ru: {
@@ -69,25 +95,38 @@ const TEXT = {
     yourDevices: "Твои устройства",
     availablePlans: "Доступные планы",
     selectDevice: "Сначала выбери устройство",
-    payButton: "Оплатить",
-    paySoon: "Интеграция оплаты будет подключена следующим шагом.",
     selectedDevice: "Выбранное устройство",
     trial: "Триал",
     subscription: "Подписка",
-    active: "активна",
-    inactive: "неактивна",
-    notStarted: "не начат",
     activeUntilSmall: "активен до",
     expiredAt: "истёк",
+    inactive: "неактивна",
+    notStarted: "не начат",
     planPrice: "Цена",
     duration: "Длительность",
     days: "дней",
-    alreadyActive: "У устройства уже есть доступ",
-    pairFirst: "Сначала привяжи устройство",
-    choosePlan: "Выбери план",
-    billingStubTitle: "Автоматическая оплата",
+    alreadyActive: "У устройства уже есть активная подписка.",
+    choosePlanHint: "Выбери план справа, затем оплати через PayPal.",
+    billingStubTitle: "Автоматическая активация",
     billingStubText:
-      "Позже эта кнопка будет открывать checkout, а backend через webhook будет сам создавать или продлевать подписку без ручного вмешательства.",
+      "После успешной оплаты backend автоматически создаст DeviceSubscription и устройство сразу получит доступ.",
+    paypalLoading: "Загрузка PayPal...",
+    paypalReady: "PayPal готов",
+    paypalError: "Ошибка PayPal",
+    paymentSuccess: "Оплата прошла успешно. Подписка активирована.",
+    paymentCancelled: "Оплата отменена.",
+    selectPlanFirst: "Сначала выбери план",
+    selectedPlan: "Выбранный план",
+    notPaired: "Устройство ещё не завершило pairing",
+    accessNow: "Доступ сейчас",
+    yes: "Да",
+    no: "Нет",
+    amountUsd: "Сумма в USD",
+    refreshing: "Обновление...",
+    loginRequired: "Нужна авторизация",
+    noPlans: "Планы пока не найдены.",
+    sdkMissing: "NEXT_PUBLIC_PAYPAL_CLIENT_ID не задан",
+    cannotPayNow: "Сейчас оплата недоступна для этого устройства.",
   },
   en: {
     loading: "Loading...",
@@ -102,25 +141,38 @@ const TEXT = {
     yourDevices: "Your devices",
     availablePlans: "Available plans",
     selectDevice: "Select a device first",
-    payButton: "Pay",
-    paySoon: "Payment integration will be connected in the next step.",
     selectedDevice: "Selected device",
     trial: "Trial",
     subscription: "Subscription",
-    active: "active",
-    inactive: "inactive",
-    notStarted: "not started",
     activeUntilSmall: "active until",
     expiredAt: "expired at",
+    inactive: "inactive",
+    notStarted: "not started",
     planPrice: "Price",
     duration: "Duration",
     days: "days",
-    alreadyActive: "This device already has access",
-    pairFirst: "Pair a device first",
-    choosePlan: "Choose a plan",
-    billingStubTitle: "Automatic billing",
+    alreadyActive: "This device already has an active subscription.",
+    choosePlanHint: "Choose a plan on the right, then pay with PayPal.",
+    billingStubTitle: "Automatic activation",
     billingStubText:
-      "Later this button will open checkout, and the backend will create or extend the subscription automatically via webhook without manual work.",
+      "After successful payment, the backend automatically creates a DeviceSubscription and the device gets access immediately.",
+    paypalLoading: "Loading PayPal...",
+    paypalReady: "PayPal ready",
+    paypalError: "PayPal error",
+    paymentSuccess: "Payment completed successfully. Subscription activated.",
+    paymentCancelled: "Payment cancelled.",
+    selectPlanFirst: "Select a plan first",
+    selectedPlan: "Selected plan",
+    notPaired: "The device has not completed pairing yet",
+    accessNow: "Access now",
+    yes: "Yes",
+    no: "No",
+    amountUsd: "Amount in USD",
+    refreshing: "Refreshing...",
+    loginRequired: "Authorization required",
+    noPlans: "No plans found yet.",
+    sdkMissing: "NEXT_PUBLIC_PAYPAL_CLIENT_ID is not set",
+    cannotPayNow: "Payment is not available for this device right now.",
   },
 };
 
@@ -136,85 +188,267 @@ function formatDate(value: string | null): string {
   return date.toLocaleString();
 }
 
+function getPayPalClientId(): string {
+  return process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
+}
+
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
+
 export default function BillingPage() {
   const [lang, setLang] = useState<Lang>("ru");
   const t = TEXT[lang];
 
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [infoText, setInfoText] = useState("");
   const [user, setUser] = useState<LocalUser | null>(null);
   const [devices, setDevices] = useState<DeviceItem[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [paypalReady, setPaypalReady] = useState(false);
+  const [creatingOrder, setCreatingOrder] = useState(false);
+  const [capturingOrder, setCapturingOrder] = useState(false);
+  const [previewAmountUsd, setPreviewAmountUsd] = useState<string>("");
+
+  const paypalRef = useRef<HTMLDivElement | null>(null);
+  const buttonsRef = useRef<PayPalButtonsInstance | null>(null);
 
   useEffect(() => {
     const updateLang = () => setLang(getLang());
     updateLang();
-    window.addEventListener("site-language-change", updateLang);
-    return () => window.removeEventListener("site-language-change", updateLang);
+    window.addEventListener("site-language-change", updateLang as EventListener);
+    return () => window.removeEventListener("site-language-change", updateLang as EventListener);
   }, []);
+
+  async function loadData(initial = false) {
+    try {
+      if (initial) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+
+      setErrorText("");
+
+      const [devicesData, plansData] = await Promise.all([
+        apiFetch("/v1/user/devices", { method: "GET" }),
+        apiFetch("/v1/plans", { method: "GET" }),
+      ]);
+
+      const loadedDevices: DeviceItem[] = devicesData.devices || [];
+      const loadedPlans: Plan[] = plansData.plans || [];
+
+      setDevices(loadedDevices);
+      setPlans(loadedPlans);
+
+      setSelectedDeviceId((prev) => {
+        if (prev && loadedDevices.some((item) => item.device.id === prev)) return prev;
+        return loadedDevices[0]?.device.id || "";
+      });
+
+      setSelectedPlanId((prev) => {
+        if (prev && loadedPlans.some((item) => item.id === prev)) return prev;
+        return loadedPlans[0]?.id || "";
+      });
+    } catch (err) {
+      setErrorText(extractErrorMessage(err, "Load failed"));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
     const token = getToken();
     const localUser = getUser();
 
     if (!token) {
+      setErrorText(t.loginRequired);
       window.location.href = "/login";
       return;
     }
 
     setUser(localUser);
     setReady(true);
-
-    async function loadData() {
-      try {
-        setErrorText("");
-
-        const [devicesData, plansData] = await Promise.all([
-          apiFetch("/v1/user/devices", { method: "GET" }),
-          apiFetch("/v1/plans", { method: "GET" }),
-        ]);
-
-        const loadedDevices = devicesData.devices || [];
-        const loadedPlans = plansData.plans || [];
-
-        setDevices(loadedDevices);
-        setPlans(loadedPlans);
-
-        if (loadedDevices.length > 0) {
-          setSelectedDeviceId(loadedDevices[0].device.id);
-        }
-      } catch (err) {
-        setErrorText(err instanceof Error ? err.message : "Load failed");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    void loadData();
+    void loadData(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedDevice = useMemo(() => {
     return devices.find((item) => item.device.id === selectedDeviceId) || null;
   }, [devices, selectedDeviceId]);
 
-  function handleFakePay(plan: Plan) {
-    setErrorText("");
+  const selectedPlan = useMemo(() => {
+    return plans.find((item) => item.id === selectedPlanId) || null;
+  }, [plans, selectedPlanId]);
 
-    if (!selectedDevice) {
-      setInfoText(t.selectDevice);
+  const canRenderPayPal =
+    !!selectedDevice &&
+    !!selectedPlan &&
+    selectedDevice.status.isPaired &&
+    !selectedDevice.subscription.active &&
+    !creatingOrder &&
+    !capturingOrder;
+
+  useEffect(() => {
+    const clientId = getPayPalClientId();
+    if (!clientId) {
+      setErrorText(t.sdkMissing);
       return;
     }
 
-    if (selectedDevice.status.hasAccess) {
-      setInfoText(t.alreadyActive);
+    const existing = document.querySelector('script[data-paypal-sdk="true"]') as HTMLScriptElement | null;
+
+    if (existing) {
+      if (window.paypal) {
+        setPaypalReady(true);
+      } else {
+        existing.addEventListener("load", () => setPaypalReady(true), { once: true });
+        existing.addEventListener("error", () => setErrorText(t.paypalError), { once: true });
+      }
       return;
     }
 
-    setInfoText(`${t.paySoon} ${t.choosePlan}: ${plan.name}.`);
-  }
+    const script = document.createElement("script");
+    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
+      clientId
+    )}&currency=USD&intent=capture&components=buttons`;
+    script.async = true;
+    script.setAttribute("data-paypal-sdk", "true");
+
+    script.onload = () => setPaypalReady(true);
+    script.onerror = () => setErrorText(t.paypalError);
+
+    document.body.appendChild(script);
+  }, [t.paypalError, t.sdkMissing]);
+
+  useEffect(() => {
+    if (!paypalRef.current) return;
+    paypalRef.current.innerHTML = "";
+
+    if (buttonsRef.current?.close) {
+      try {
+        void buttonsRef.current.close();
+      } catch {
+        // ignore
+      }
+    }
+    buttonsRef.current = null;
+
+    if (!paypalReady || !window.paypal || !paypalRef.current) return;
+    if (!canRenderPayPal || !selectedDevice || !selectedPlan) return;
+
+    const buttons = window.paypal.Buttons({
+      style: {
+        layout: "vertical",
+        shape: "rect",
+        label: "paypal",
+      },
+
+      createOrder: async () => {
+        setErrorText("");
+        setInfoText("");
+        setCreatingOrder(true);
+
+        try {
+          const data = await apiFetch("/v1/billing/create-order", {
+            method: "POST",
+            body: JSON.stringify({
+              deviceId: selectedDevice.device.id,
+              planId: selectedPlan.id,
+              lang,
+            }),
+          });
+
+          const orderId = String(data.orderId || "");
+          if (!orderId) {
+            throw new Error("Missing orderId from backend");
+          }
+
+          setPreviewAmountUsd(String(data.amountUsd || ""));
+          return orderId;
+        } catch (err) {
+          const message = extractErrorMessage(err, t.paypalError);
+          setErrorText(message);
+          throw err;
+        } finally {
+          setCreatingOrder(false);
+        }
+      },
+
+      onApprove: async (data) => {
+        setErrorText("");
+        setInfoText("");
+        setCapturingOrder(true);
+
+        try {
+          const orderId = String(data.orderID || "");
+          if (!orderId) {
+            throw new Error("Missing PayPal orderID");
+          }
+
+          await apiFetch("/v1/billing/capture-order", {
+            method: "POST",
+            body: JSON.stringify({
+              orderId,
+              deviceId: selectedDevice.device.id,
+              planId: selectedPlan.id,
+              lang,
+            }),
+          });
+
+          setInfoText(t.paymentSuccess);
+          await loadData(false);
+        } catch (err) {
+          setErrorText(extractErrorMessage(err, t.paypalError));
+        } finally {
+          setCapturingOrder(false);
+        }
+      },
+
+      onCancel: () => {
+        setInfoText(t.paymentCancelled);
+      },
+
+      onError: (err) => {
+        setErrorText(extractErrorMessage(err, t.paypalError));
+      },
+    });
+
+    buttonsRef.current = buttons;
+
+    if (typeof buttons.isEligible === "function" && !buttons.isEligible()) {
+      setErrorText(t.paypalError);
+      return;
+    }
+
+    void buttons.render(paypalRef.current);
+
+    return () => {
+      if (buttonsRef.current?.close) {
+        try {
+          void buttonsRef.current.close();
+        } catch {
+          // ignore
+        }
+      }
+    };
+  }, [
+    paypalReady,
+    canRenderPayPal,
+    selectedDevice,
+    selectedPlan,
+    lang,
+    t.paypalError,
+    t.paymentCancelled,
+    t.paymentSuccess,
+  ]);
 
   if (!ready) {
     return (
@@ -260,6 +494,9 @@ export default function BillingPage() {
               {t.selectedDevice}: {selectedDevice?.device.name || "—"}
             </div>
             <div>
+              {t.selectedPlan}: {selectedPlan?.name || "—"}
+            </div>
+            <div>
               {t.currentPlan}:{" "}
               {selectedDevice?.subscription.active
                 ? selectedDevice.subscription.plan?.name || "—"
@@ -271,10 +508,15 @@ export default function BillingPage() {
                 ? formatDate(selectedDevice.subscription.currentPeriodEnd)
                 : "—"}
             </div>
+            {previewAmountUsd ? (
+              <div>
+                {t.amountUsd}: {previewAmountUsd} USD
+              </div>
+            ) : null}
           </div>
         </div>
 
-        {loading ? (
+        {(loading || refreshing) && (
           <div
             style={{
               background: "#111827",
@@ -284,9 +526,9 @@ export default function BillingPage() {
               color: "#a1a1aa",
             }}
           >
-            {t.loading}
+            {loading ? t.loading : t.refreshing}
           </div>
-        ) : null}
+        )}
 
         {errorText ? (
           <div
@@ -341,7 +583,11 @@ export default function BillingPage() {
                   <span>{t.chooseDevice}</span>
                   <select
                     value={selectedDeviceId}
-                    onChange={(e) => setSelectedDeviceId(e.target.value)}
+                    onChange={(e) => {
+                      setInfoText("");
+                      setErrorText("");
+                      setSelectedDeviceId(e.target.value);
+                    }}
                     style={{
                       padding: 14,
                       borderRadius: 12,
@@ -374,6 +620,12 @@ export default function BillingPage() {
                     </div>
                     <div>UID: {selectedDevice.device.uid}</div>
                     <div>
+                      Pairing: {selectedDevice.status.isPaired ? t.yes : t.no}
+                    </div>
+                    <div>
+                      {t.accessNow}: {selectedDevice.status.hasAccess ? t.yes : t.no}
+                    </div>
+                    <div>
                       {t.trial}:{" "}
                       {selectedDevice.trial.exists
                         ? selectedDevice.trial.active
@@ -403,45 +655,95 @@ export default function BillingPage() {
           >
             <h2 style={{ marginTop: 0 }}>{t.availablePlans}</h2>
 
-            <div style={{ display: "grid", gap: 16 }}>
-              {plans.map((plan) => (
-                <div
-                  key={plan.id}
-                  style={{
-                    background: "#0b1220",
-                    border: "1px solid #1f2937",
-                    borderRadius: 18,
-                    padding: 18,
-                  }}
-                >
-                  <h3 style={{ marginTop: 0, marginBottom: 10 }}>{plan.name}</h3>
-
-                  <div style={{ color: "#d1d5db", lineHeight: 1.8, marginBottom: 14 }}>
-                    <div>
-                      {t.planPrice}: {plan.priceKzt} KZT
-                    </div>
-                    <div>
-                      {t.duration}: {plan.durationDays} {t.days}
-                    </div>
-                  </div>
-
+            {plans.length === 0 ? (
+              <div style={{ color: "#a1a1aa" }}>{t.noPlans}</div>
+            ) : (
+              <div style={{ display: "grid", gap: 16 }}>
+                {plans.map((plan) => (
                   <button
-                    onClick={() => handleFakePay(plan)}
-                    disabled={devices.length === 0}
+                    key={plan.id}
+                    onClick={() => {
+                      setInfoText("");
+                      setErrorText("");
+                      setSelectedPlanId(plan.id);
+                    }}
                     style={{
-                      background: "#2563eb",
+                      textAlign: "left",
+                      background: selectedPlanId === plan.id ? "#13203a" : "#0b1220",
+                      border:
+                        selectedPlanId === plan.id
+                          ? "1px solid #2563eb"
+                          : "1px solid #1f2937",
+                      borderRadius: 18,
+                      padding: 18,
                       color: "white",
-                      border: "none",
-                      borderRadius: 12,
-                      padding: "12px 16px",
-                      cursor: devices.length === 0 ? "default" : "pointer",
-                      opacity: devices.length === 0 ? 0.6 : 1,
+                      cursor: "pointer",
                     }}
                   >
-                    {devices.length === 0 ? t.pairFirst : t.payButton}
+                    <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 10 }}>
+                      {plan.name}
+                    </div>
+                    <div style={{ color: "#d1d5db", lineHeight: 1.8 }}>
+                      <div>
+                        {t.planPrice}: {plan.priceKzt} KZT
+                      </div>
+                      <div>
+                        {t.duration}: {plan.durationDays} {t.days}
+                      </div>
+                    </div>
                   </button>
+                ))}
+              </div>
+            )}
+
+            <div style={{ marginTop: 18, color: "#a1a1aa" }}>{t.choosePlanHint}</div>
+
+            <div style={{ marginTop: 18 }}>
+              {!paypalReady ? (
+                <div style={{ color: "#a1a1aa" }}>{t.paypalLoading}</div>
+              ) : (
+                <div style={{ color: "#86efac", marginBottom: 12 }}>{t.paypalReady}</div>
+              )}
+
+              {selectedDevice && !selectedDevice.status.isPaired ? (
+                <div
+                  style={{
+                    background: "#1f2937",
+                    color: "#fca5a5",
+                    padding: 12,
+                    borderRadius: 12,
+                    border: "1px solid #374151",
+                    marginBottom: 12,
+                  }}
+                >
+                  {t.notPaired}
                 </div>
-              ))}
+              ) : null}
+
+              {selectedDevice?.subscription.active ? (
+                <div
+                  style={{
+                    background: "#1f2937",
+                    color: "#fde68a",
+                    padding: 12,
+                    borderRadius: 12,
+                    border: "1px solid #374151",
+                    marginBottom: 12,
+                  }}
+                >
+                  {t.alreadyActive}
+                </div>
+              ) : null}
+
+              {!selectedDevice || !selectedPlan ? (
+                <div style={{ color: "#a1a1aa" }}>{t.selectDevice}</div>
+              ) : null}
+
+              {!canRenderPayPal && selectedDevice && selectedPlan && !selectedDevice.subscription.active && !selectedDevice.status.isPaired ? (
+                <div style={{ color: "#a1a1aa" }}>{t.cannotPayNow}</div>
+              ) : null}
+
+              <div ref={paypalRef} />
             </div>
           </div>
         </div>
