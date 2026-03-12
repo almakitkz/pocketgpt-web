@@ -1,25 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { apiFetch } from "@/lib/api";
-import { getToken, getUser } from "@/lib/auth";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 
 type Lang = "ru" | "en";
-
-type Plan = {
-  id: string;
-  name: string;
-  priceKzt: number;
-  durationDays: number;
-  createdAt: string | null;
-};
 
 type DeviceItem = {
   device: {
     id: string;
     uid: string;
     name: string;
-    ownerId: string;
+    ownerId: string | null;
     disabled: boolean;
     createdAt: string | null;
   };
@@ -47,718 +38,658 @@ type DeviceItem = {
     status: string | null;
     trialEnd: string | null;
     currentPeriodEnd: string | null;
-    stripeSubscriptionId?: string | null;
-    stripePriceId?: string | null;
-    createdAt?: string | null;
-    updatedAt?: string | null;
+    stripeSubscriptionId: string | null;
+    stripePriceId: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
   };
 };
 
-type LocalUser = {
+type Plan = {
   id: string;
-  email: string;
+  name: string;
+  priceKzt: number;
+  durationDays: number;
+  createdAt: string | null;
 };
 
-type PayPalButtonsInstance = {
-  render: (container: HTMLElement) => Promise<void> | void;
-  close?: () => Promise<void> | void;
-  isEligible?: () => boolean;
+type CreateOrderResponse = {
+  ok: true;
+  orderId: string;
+  approveUrl?: string | null;
+  currency: string;
+  amountUsd: string;
+  device: {
+    id: string;
+    uid: string;
+    name: string;
+  };
+  plan: Plan;
 };
 
-type PayPalNamespace = {
-  Buttons: (config: {
-    createOrder: () => Promise<string>;
-    onApprove: (data: { orderID?: string }) => Promise<void>;
-    onError?: (err: unknown) => void;
-    onCancel?: () => void;
-    style?: Record<string, unknown>;
-  }) => PayPalButtonsInstance;
+type CaptureOrderResponse = {
+  ok: true;
+  device: {
+    id: string;
+    uid: string;
+    name: string;
+    ownerId: string | null;
+    disabled: boolean;
+    createdAt: string | null;
+  };
+  subscription: {
+    id: string;
+    deviceId: string;
+    planId: string;
+    plan: Plan | null;
+    status: string;
+    trialEnd: string | null;
+    currentPeriodEnd: string | null;
+    stripeSubscriptionId: string | null;
+    stripePriceId: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+  };
+  paypal: {
+    orderId: string;
+    captureId: string;
+    status: string;
+    idempotentReplay?: boolean;
+  };
+  access: {
+    hasAccess: boolean;
+    trial: DeviceItem["trial"];
+    subscription: DeviceItem["subscription"];
+  };
 };
 
-declare global {
-  interface Window {
-    paypal?: PayPalNamespace;
-  }
-}
+type ApiErrorPayload = {
+  ok?: false;
+  error?: {
+    code?: string;
+    message?: string;
+    details?: unknown;
+  };
+};
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
+  "https://pocketgpt-server.onrender.com";
+
+const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
 const TEXT = {
   ru: {
-    loading: "Загрузка...",
     title: "Billing",
-    subtitle: "Управляй планами и подписками для своих устройств PocketGPT.",
-    currentUser: "Пользователь",
-    currentPlan: "Текущий план",
-    noPlan: "Нет активного плана",
-    activeUntil: "Активно до",
-    chooseDevice: "Выбери устройство",
-    noDevices: "У тебя пока нет привязанных устройств.",
-    yourDevices: "Твои устройства",
-    availablePlans: "Доступные планы",
-    selectDevice: "Сначала выбери устройство",
-    selectedDevice: "Выбранное устройство",
-    trial: "Триал",
-    subscription: "Подписка",
-    activeUntilSmall: "активен до",
-    expiredAt: "истёк",
-    inactive: "неактивна",
-    notStarted: "не начат",
-    planPrice: "Цена",
-    duration: "Длительность",
-    days: "дней",
-    alreadyActive: "У устройства уже есть активная подписка.",
-    choosePlanHint: "Выбери план справа, затем оплати через PayPal.",
-    billingStubTitle: "Автоматическая активация",
-    billingStubText:
-      "После успешной оплаты backend автоматически создаст DeviceSubscription и устройство сразу получит доступ.",
-    paypalLoading: "Загрузка PayPal...",
+    subtitle:
+      "Выбери устройство и план. После успешной оплаты backend автоматически активирует подписку.",
+    authRequired: "Нужна авторизация. Войди в аккаунт заново.",
+    loading: "Загрузка...",
+    loadingDevices: "Загружаем устройства...",
+    loadingPlans: "Загружаем планы...",
+    noDevices: "У тебя пока нет устройств.",
+    noPlans: "Планы пока не найдены.",
+    myDevices: "Мои устройства",
+    plans: "Планы",
+    selected: "Выбрано",
+    chooseDevice: "Сначала выбери устройство слева.",
+    choosePlan: "Теперь выбери план справа.",
     paypalReady: "PayPal готов",
-    paypalError: "Ошибка PayPal",
+    paypalNotReady:
+      "PayPal Client ID не найден. Проверь NEXT_PUBLIC_PAYPAL_CLIENT_ID в Vercel.",
+    paymentHint: "После оплаты доступ активируется автоматически.",
+    creatingOrder: "Создаём заказ PayPal...",
+    capturingOrder: "Подтверждаем оплату...",
     paymentSuccess: "Оплата прошла успешно. Подписка активирована.",
     paymentCancelled: "Оплата отменена.",
-    selectPlanFirst: "Сначала выбери план",
-    selectedPlan: "Выбранный план",
-    notPaired: "Устройство ещё не завершило pairing",
+    paymentError: "Не удалось начать оплату.",
+    refresh: "Обновить",
+    paired: "Pairing",
     accessNow: "Доступ сейчас",
+    trial: "Триал",
+    subscription: "Подписка",
+    active: "Активно",
+    inactive: "Неактивно",
     yes: "Да",
     no: "Нет",
-    amountUsd: "Сумма в USD",
-    refreshing: "Обновление...",
-    loginRequired: "Нужна авторизация",
-    noPlans: "Планы пока не найдены.",
-    sdkMissing: "NEXT_PUBLIC_PAYPAL_CLIENT_ID не задан",
-    cannotPayNow: "Сейчас оплата недоступна для этого устройства.",
+    notStarted: "не начат",
+    expiredAt: "истёк",
+    activeUntil: "активен до",
+    price: "Цена",
+    duration: "Длительность",
+    days: "дней",
+    selectedDevice: "Выбранное устройство",
+    selectedPlan: "Выбранный план",
+    status: "Статус",
   },
   en: {
-    loading: "Loading...",
     title: "Billing",
-    subtitle: "Manage plans and subscriptions for your PocketGPT devices.",
-    currentUser: "User",
-    currentPlan: "Current plan",
-    noPlan: "No active plan",
-    activeUntil: "Active until",
-    chooseDevice: "Choose a device",
-    noDevices: "You do not have any paired devices yet.",
-    yourDevices: "Your devices",
-    availablePlans: "Available plans",
-    selectDevice: "Select a device first",
-    selectedDevice: "Selected device",
+    subtitle:
+      "Choose a device and a plan. After successful payment, the backend will activate the subscription automatically.",
+    authRequired: "Authorization required. Please sign in again.",
+    loading: "Loading...",
+    loadingDevices: "Loading devices...",
+    loadingPlans: "Loading plans...",
+    noDevices: "You do not have any devices yet.",
+    noPlans: "No plans found.",
+    myDevices: "My devices",
+    plans: "Plans",
+    selected: "Selected",
+    chooseDevice: "First choose a device on the left.",
+    choosePlan: "Now choose a plan on the right.",
+    paypalReady: "PayPal is ready",
+    paypalNotReady:
+      "PayPal Client ID is missing. Check NEXT_PUBLIC_PAYPAL_CLIENT_ID in Vercel.",
+    paymentHint: "Access will be activated automatically after payment.",
+    creatingOrder: "Creating PayPal order...",
+    capturingOrder: "Capturing payment...",
+    paymentSuccess: "Payment completed successfully. Subscription activated.",
+    paymentCancelled: "Payment was cancelled.",
+    paymentError: "Failed to start payment.",
+    refresh: "Refresh",
+    paired: "Pairing",
+    accessNow: "Access now",
     trial: "Trial",
     subscription: "Subscription",
-    activeUntilSmall: "active until",
-    expiredAt: "expired at",
-    inactive: "inactive",
-    notStarted: "not started",
-    planPrice: "Price",
-    duration: "Duration",
-    days: "days",
-    alreadyActive: "This device already has an active subscription.",
-    choosePlanHint: "Choose a plan on the right, then pay with PayPal.",
-    billingStubTitle: "Automatic activation",
-    billingStubText:
-      "After successful payment, the backend automatically creates a DeviceSubscription and the device gets access immediately.",
-    paypalLoading: "Loading PayPal...",
-    paypalReady: "PayPal ready",
-    paypalError: "PayPal error",
-    paymentSuccess: "Payment completed successfully. Subscription activated.",
-    paymentCancelled: "Payment cancelled.",
-    selectPlanFirst: "Select a plan first",
-    selectedPlan: "Selected plan",
-    notPaired: "The device has not completed pairing yet",
-    accessNow: "Access now",
+    active: "Active",
+    inactive: "Inactive",
     yes: "Yes",
     no: "No",
-    amountUsd: "Amount in USD",
-    refreshing: "Refreshing...",
-    loginRequired: "Authorization required",
-    noPlans: "No plans found yet.",
-    sdkMissing: "NEXT_PUBLIC_PAYPAL_CLIENT_ID is not set",
-    cannotPayNow: "Payment is not available for this device right now.",
+    notStarted: "not started",
+    expiredAt: "expired",
+    activeUntil: "active until",
+    price: "Price",
+    duration: "Duration",
+    days: "days",
+    selectedDevice: "Selected device",
+    selectedPlan: "Selected plan",
+    status: "Status",
   },
-};
+} as const;
 
-function getLang(): Lang {
-  if (typeof window === "undefined") return "ru";
-  return localStorage.getItem("site_lang") === "en" ? "en" : "ru";
+function getStoredToken(): string {
+  if (typeof window === "undefined") return "";
+  return (
+    localStorage.getItem("token") ||
+    localStorage.getItem("auth_token") ||
+    localStorage.getItem("jwt") ||
+    ""
+  );
 }
 
-function formatDate(value: string | null): string {
+function getStoredLang(): Lang {
+  if (typeof window === "undefined") return "ru";
+  const raw =
+    localStorage.getItem("lang") ||
+    localStorage.getItem("locale") ||
+    localStorage.getItem("language") ||
+    "ru";
+  return raw.toLowerCase().startsWith("en") ? "en" : "ru";
+}
+
+function formatDate(value: string | null, lang: Lang): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return date.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
 }
 
-function getPayPalClientId(): string {
-  return process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
-}
-
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err instanceof Error && err.message) return err.message;
+function buildErrorMessage(
+  lang: Lang,
+  fallback: string,
+  payload?: ApiErrorPayload | null
+): string {
+  const serverMessage = payload?.error?.message?.trim();
+  if (serverMessage) return serverMessage;
   return fallback;
 }
 
-export default function BillingPage() {
-  const [lang, setLang] = useState<Lang>("ru");
-  const t = TEXT[lang];
+async function apiRequest<T>(
+  path: string,
+  options: RequestInit = {},
+  token?: string
+): Promise<T> {
+  const headers = new Headers(options.headers || {});
+  headers.set("Content-Type", "application/json");
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
 
-  const [ready, setReady] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [errorText, setErrorText] = useState("");
-  const [infoText, setInfoText] = useState("");
-  const [user, setUser] = useState<LocalUser | null>(null);
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+  let data: unknown = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw data || { error: { message: `HTTP ${response.status}` } };
+  }
+
+  return data as T;
+}
+
+export default function BillingPage() {
+  const [mounted, setMounted] = useState(false);
+  const [lang, setLang] = useState<Lang>("ru");
+  const [token, setToken] = useState("");
   const [devices, setDevices] = useState<DeviceItem[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
-  const [paypalReady, setPaypalReady] = useState(false);
-  const [creatingOrder, setCreatingOrder] = useState(false);
-  const [capturingOrder, setCapturingOrder] = useState(false);
-  const [previewAmountUsd, setPreviewAmountUsd] = useState<string>("");
+  const [loadingDevices, setLoadingDevices] = useState(true);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"idle" | "success" | "error">(
+    "idle"
+  );
 
-  const paypalRef = useRef<HTMLDivElement | null>(null);
-  const buttonsRef = useRef<PayPalButtonsInstance | null>(null);
+  const t = TEXT[lang];
 
   useEffect(() => {
-    const updateLang = () => setLang(getLang());
-    updateLang();
-    window.addEventListener("site-language-change", updateLang as EventListener);
-    return () => window.removeEventListener("site-language-change", updateLang as EventListener);
+    setMounted(true);
+    setLang(getStoredLang());
+    setToken(getStoredToken());
   }, []);
 
-  async function loadData(initial = false) {
-    try {
-      if (initial) {
-        setLoading(true);
-      } else {
-        setRefreshing(true);
+  const loadDevices = useCallback(
+    async (authToken: string) => {
+      setLoadingDevices(true);
+      try {
+        const data = await apiRequest<{ ok: true; devices: DeviceItem[] }>(
+          "/v1/user/devices",
+          { method: "GET" },
+          authToken
+        );
+        setDevices(data.devices || []);
+      } finally {
+        setLoadingDevices(false);
       }
+    },
+    []
+  );
 
-      setErrorText("");
-
-      const [devicesData, plansData] = await Promise.all([
-        apiFetch("/v1/user/devices", { method: "GET" }),
-        apiFetch("/v1/plans", { method: "GET" }),
-      ]);
-
-      const loadedDevices: DeviceItem[] = devicesData.devices || [];
-      const loadedPlans: Plan[] = plansData.plans || [];
-
-      setDevices(loadedDevices);
-      setPlans(loadedPlans);
-
-      setSelectedDeviceId((prev) => {
-        if (prev && loadedDevices.some((item) => item.device.id === prev)) return prev;
-        return loadedDevices[0]?.device.id || "";
+  const loadPlans = useCallback(async () => {
+    setLoadingPlans(true);
+    try {
+      const data = await apiRequest<{ ok: true; plans: Plan[] }>("/v1/plans", {
+        method: "GET",
       });
-
-      setSelectedPlanId((prev) => {
-        if (prev && loadedPlans.some((item) => item.id === prev)) return prev;
-        return loadedPlans[0]?.id || "";
-      });
-    } catch (err) {
-      setErrorText(extractErrorMessage(err, "Load failed"));
+      setPlans(data.plans || []);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setLoadingPlans(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    const token = getToken();
-    const localUser = getUser();
-
+    if (!mounted) return;
     if (!token) {
-      setErrorText(t.loginRequired);
-      window.location.href = "/login";
+      setLoadingDevices(false);
+      setLoadingPlans(false);
       return;
     }
 
-    setUser(localUser);
-    setReady(true);
-    void loadData(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void loadDevices(token);
+    void loadPlans();
+  }, [mounted, token, loadDevices, loadPlans]);
 
-  const selectedDevice = useMemo(() => {
-    return devices.find((item) => item.device.id === selectedDeviceId) || null;
+  useEffect(() => {
+    if (!selectedDeviceId && devices.length > 0) {
+      setSelectedDeviceId(devices[0].device.id);
+    }
   }, [devices, selectedDeviceId]);
 
-  const selectedPlan = useMemo(() => {
-    return plans.find((item) => item.id === selectedPlanId) || null;
+  useEffect(() => {
+    if (!selectedPlanId && plans.length > 0) {
+      setSelectedPlanId(plans[0].id);
+    }
   }, [plans, selectedPlanId]);
 
-  const canRenderPayPal =
-    !!selectedDevice &&
-    !!selectedPlan &&
-    selectedDevice.status.isPaired &&
-    !selectedDevice.subscription.active &&
-    !creatingOrder &&
-    !capturingOrder;
+  const selectedDevice = useMemo(
+    () => devices.find((d) => d.device.id === selectedDeviceId) || null,
+    [devices, selectedDeviceId]
+  );
 
-  useEffect(() => {
-    const clientId = getPayPalClientId();
-    if (!clientId) {
-      setErrorText(t.sdkMissing);
-      return;
+  const selectedPlan = useMemo(
+    () => plans.find((p) => p.id === selectedPlanId) || null,
+    [plans, selectedPlanId]
+  );
+
+  const paypalEnabled = !!PAYPAL_CLIENT_ID && !!token && !!selectedDevice && !!selectedPlan;
+
+  const refreshAll = useCallback(async () => {
+    if (!token) return;
+    await Promise.all([loadDevices(token), loadPlans()]);
+  }, [token, loadDevices, loadPlans]);
+
+  const trialText = (item: DeviceItem) => {
+    if (!item.trial.exists) return t.notStarted;
+    if (item.trial.active && item.trial.expiresAt) {
+      return `${t.activeUntil} ${formatDate(item.trial.expiresAt, lang)}`;
     }
-
-    const existing = document.querySelector('script[data-paypal-sdk="true"]') as HTMLScriptElement | null;
-
-    if (existing) {
-      if (window.paypal) {
-        setPaypalReady(true);
-      } else {
-        existing.addEventListener("load", () => setPaypalReady(true), { once: true });
-        existing.addEventListener("error", () => setErrorText(t.paypalError), { once: true });
-      }
-      return;
+    if (item.trial.expiresAt) {
+      return `${t.expiredAt} ${formatDate(item.trial.expiresAt, lang)}`;
     }
+    return t.notStarted;
+  };
 
-    const script = document.createElement("script");
-    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
-      clientId
-    )}&currency=USD&intent=capture&components=buttons`;
-    script.async = true;
-    script.setAttribute("data-paypal-sdk", "true");
-
-    script.onload = () => setPaypalReady(true);
-    script.onerror = () => setErrorText(t.paypalError);
-
-    document.body.appendChild(script);
-  }, [t.paypalError, t.sdkMissing]);
-
-  useEffect(() => {
-    if (!paypalRef.current) return;
-    paypalRef.current.innerHTML = "";
-
-    if (buttonsRef.current?.close) {
-      try {
-        void buttonsRef.current.close();
-      } catch {
-        // ignore
-      }
+  const subscriptionText = (item: DeviceItem) => {
+    if (item.subscription.active && item.subscription.currentPeriodEnd) {
+      return `${t.activeUntil} ${formatDate(item.subscription.currentPeriodEnd, lang)}`;
     }
-    buttonsRef.current = null;
+    return t.inactive;
+  };
 
-    if (!paypalReady || !window.paypal || !paypalRef.current) return;
-    if (!canRenderPayPal || !selectedDevice || !selectedPlan) return;
-
-    const buttons = window.paypal.Buttons({
-      style: {
-        layout: "vertical",
-        shape: "rect",
-        label: "paypal",
-      },
-
-      createOrder: async () => {
-        setErrorText("");
-        setInfoText("");
-        setCreatingOrder(true);
-
-        try {
-          const data = await apiFetch("/v1/billing/create-order", {
-            method: "POST",
-            body: JSON.stringify({
-              deviceId: selectedDevice.device.id,
-              planId: selectedPlan.id,
-              lang,
-            }),
-          });
-
-          const orderId = String(data.orderId || "");
-          if (!orderId) {
-            throw new Error("Missing orderId from backend");
-          }
-
-          setPreviewAmountUsd(String(data.amountUsd || ""));
-          return orderId;
-        } catch (err) {
-          const message = extractErrorMessage(err, t.paypalError);
-          setErrorText(message);
-          throw err;
-        } finally {
-          setCreatingOrder(false);
-        }
-      },
-
-      onApprove: async (data) => {
-        setErrorText("");
-        setInfoText("");
-        setCapturingOrder(true);
-
-        try {
-          const orderId = String(data.orderID || "");
-          if (!orderId) {
-            throw new Error("Missing PayPal orderID");
-          }
-
-          await apiFetch("/v1/billing/capture-order", {
-            method: "POST",
-            body: JSON.stringify({
-              orderId,
-              deviceId: selectedDevice.device.id,
-              planId: selectedPlan.id,
-              lang,
-            }),
-          });
-
-          setInfoText(t.paymentSuccess);
-          await loadData(false);
-        } catch (err) {
-          setErrorText(extractErrorMessage(err, t.paypalError));
-        } finally {
-          setCapturingOrder(false);
-        }
-      },
-
-      onCancel: () => {
-        setInfoText(t.paymentCancelled);
-      },
-
-      onError: (err) => {
-        setErrorText(extractErrorMessage(err, t.paypalError));
-      },
-    });
-
-    buttonsRef.current = buttons;
-
-    if (typeof buttons.isEligible === "function" && !buttons.isEligible()) {
-      setErrorText(t.paypalError);
-      return;
-    }
-
-    void buttons.render(paypalRef.current);
-
-    return () => {
-      if (buttonsRef.current?.close) {
-        try {
-          void buttonsRef.current.close();
-        } catch {
-          // ignore
-        }
-      }
-    };
-  }, [
-    paypalReady,
-    canRenderPayPal,
-    selectedDevice,
-    selectedPlan,
-    lang,
-    t.paypalError,
-    t.paymentCancelled,
-    t.paymentSuccess,
-  ]);
-
-  if (!ready) {
+  if (!mounted) {
     return (
-      <main
-        style={{
-          minHeight: "calc(100vh - 80px)",
-          background: "#050816",
-          color: "white",
-          padding: 32,
-        }}
-      >
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>{t.loading}</div>
+      <main className="mx-auto max-w-6xl px-6 py-10 text-white">
+        <div className="rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
+          {TEXT.ru.loading}
+        </div>
+      </main>
+    );
+  }
+
+  if (!token) {
+    return (
+      <main className="mx-auto max-w-6xl px-6 py-10 text-white">
+        <div className="rounded-3xl border border-red-900/40 bg-[#081226] p-6 text-red-300">
+          {t.authRequired}
+        </div>
       </main>
     );
   }
 
   return (
-    <main
-      style={{
-        minHeight: "calc(100vh - 80px)",
-        background: "#050816",
-        color: "white",
-        padding: 32,
-      }}
-    >
-      <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gap: 20 }}>
-        <div
-          style={{
-            background: "#111827",
-            border: "1px solid #1f2937",
-            borderRadius: 20,
-            padding: 24,
-          }}
-        >
-          <h1 style={{ marginTop: 0, marginBottom: 8 }}>{t.title}</h1>
-          <p style={{ color: "#a1a1aa", marginTop: 0 }}>{t.subtitle}</p>
+    <main className="mx-auto max-w-6xl px-6 py-10 text-white">
+      <div className="mb-6 rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
+        <div className="mb-2 text-3xl font-bold">{t.title}</div>
+        <div className="text-white/70">{t.subtitle}</div>
+      </div>
 
-          <div style={{ color: "#d4d4d8", lineHeight: 1.8, marginTop: 10 }}>
-            <div>
-              {t.currentUser}: {user?.email || "—"}
-            </div>
-            <div>
-              {t.selectedDevice}: {selectedDevice?.device.name || "—"}
-            </div>
-            <div>
-              {t.selectedPlan}: {selectedPlan?.name || "—"}
-            </div>
-            <div>
-              {t.currentPlan}:{" "}
-              {selectedDevice?.subscription.active
-                ? selectedDevice.subscription.plan?.name || "—"
-                : t.noPlan}
-            </div>
-            <div>
-              {t.activeUntil}:{" "}
-              {selectedDevice?.subscription.active
-                ? formatDate(selectedDevice.subscription.currentPeriodEnd)
-                : "—"}
-            </div>
-            {previewAmountUsd ? (
-              <div>
-                {t.amountUsd}: {previewAmountUsd} USD
-              </div>
-            ) : null}
-          </div>
+      {message ? (
+        <div
+          className={`mb-6 rounded-2xl border p-4 ${
+            messageType === "success"
+              ? "border-green-700/50 bg-green-950/30 text-green-300"
+              : "border-red-700/50 bg-red-950/30 text-red-300"
+          }`}
+        >
+          {message}
         </div>
+      ) : null}
 
-        {(loading || refreshing) && (
-          <div
-            style={{
-              background: "#111827",
-              border: "1px solid #1f2937",
-              borderRadius: 20,
-              padding: 24,
-              color: "#a1a1aa",
-            }}
-          >
-            {loading ? t.loading : t.refreshing}
-          </div>
-        )}
-
-        {errorText ? (
-          <div
-            style={{
-              background: "#3f1d1d",
-              color: "#fecaca",
-              padding: 12,
-              borderRadius: 12,
-              border: "1px solid #7f1d1d",
-            }}
-          >
-            {errorText}
-          </div>
-        ) : null}
-
-        {infoText ? (
-          <div
-            style={{
-              background: "#0f172a",
-              color: "#bfdbfe",
-              padding: 12,
-              borderRadius: 12,
-              border: "1px solid #1d4ed8",
-            }}
-          >
-            {infoText}
-          </div>
-        ) : null}
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.1fr 1fr",
-            gap: 20,
-          }}
+      <div className="mb-6 flex justify-end">
+        <button
+          onClick={() => void refreshAll()}
+          className="rounded-xl border border-blue-700/50 bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
         >
-          <div
-            style={{
-              background: "#111827",
-              border: "1px solid #1f2937",
-              borderRadius: 20,
-              padding: 24,
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>{t.yourDevices}</h2>
+          {t.refresh}
+        </button>
+      </div>
 
-            {devices.length === 0 ? (
-              <div style={{ color: "#a1a1aa" }}>{t.noDevices}</div>
-            ) : (
-              <div style={{ display: "grid", gap: 14 }}>
-                <label style={{ color: "#d1d5db", display: "grid", gap: 8 }}>
-                  <span>{t.chooseDevice}</span>
-                  <select
-                    value={selectedDeviceId}
-                    onChange={(e) => {
-                      setInfoText("");
-                      setErrorText("");
-                      setSelectedDeviceId(e.target.value);
-                    }}
-                    style={{
-                      padding: 14,
-                      borderRadius: 12,
-                      border: "1px solid #374151",
-                      background: "#0b1220",
-                      color: "white",
-                    }}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
+          <h2 className="mb-4 text-2xl font-semibold">{t.myDevices}</h2>
+
+          {loadingDevices ? (
+            <div className="text-white/70">{t.loadingDevices}</div>
+          ) : devices.length === 0 ? (
+            <div className="text-white/70">{t.noDevices}</div>
+          ) : (
+            <div className="space-y-4">
+              {devices.map((item) => {
+                const isSelected = item.device.id === selectedDeviceId;
+                return (
+                  <button
+                    key={item.device.id}
+                    type="button"
+                    onClick={() => setSelectedDeviceId(item.device.id)}
+                    className={`w-full rounded-2xl border p-5 text-left transition ${
+                      isSelected
+                        ? "border-blue-500 bg-blue-950/30"
+                        : "border-blue-900/40 bg-[#07101f] hover:border-blue-700/60"
+                    }`}
                   >
-                    {devices.map((item) => (
-                      <option key={item.device.id} value={item.device.id}>
-                        {item.device.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    <div className="mb-2 flex items-center justify-between gap-4">
+                      <div className="text-2xl font-semibold">{item.device.name}</div>
+                      <div
+                        className={`rounded-full px-3 py-1 text-sm font-medium ${
+                          item.status.hasAccess
+                            ? "bg-green-900/40 text-green-300"
+                            : "bg-red-900/40 text-red-300"
+                        }`}
+                      >
+                        {item.status.hasAccess ? t.active : t.inactive}
+                      </div>
+                    </div>
 
-                {selectedDevice ? (
-                  <div
-                    style={{
-                      background: "#0b1220",
-                      border: "1px solid #1f2937",
-                      borderRadius: 16,
-                      padding: 18,
-                      color: "#d1d5db",
-                      lineHeight: 1.8,
-                    }}
-                  >
-                    <div>
-                      <strong>{selectedDevice.device.name}</strong>
+                    <div className="space-y-1 text-base text-white/85">
+                      <div>UID: {item.device.uid}</div>
+                      <div>
+                        {t.paired}: {item.status.isPaired ? t.yes : t.no}
+                      </div>
+                      <div>
+                        {t.accessNow}: {item.status.hasAccess ? t.yes : t.no}
+                      </div>
+                      <div>
+                        {t.trial}: {trialText(item)}
+                      </div>
+                      <div>
+                        {t.subscription}: {subscriptionText(item)}
+                      </div>
                     </div>
-                    <div>UID: {selectedDevice.device.uid}</div>
-                    <div>
-                      Pairing: {selectedDevice.status.isPaired ? t.yes : t.no}
-                    </div>
-                    <div>
-                      {t.accessNow}: {selectedDevice.status.hasAccess ? t.yes : t.no}
-                    </div>
-                    <div>
-                      {t.trial}:{" "}
-                      {selectedDevice.trial.exists
-                        ? selectedDevice.trial.active
-                          ? `${t.activeUntilSmall} ${formatDate(selectedDevice.trial.expiresAt)}`
-                          : `${t.expiredAt} ${formatDate(selectedDevice.trial.expiresAt)}`
-                        : t.notStarted}
-                    </div>
-                    <div>
-                      {t.subscription}:{" "}
-                      {selectedDevice.subscription.active
-                        ? `${selectedDevice.subscription.plan?.name || "plan"}`
-                        : t.inactive}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
 
-          <div
-            style={{
-              background: "#111827",
-              border: "1px solid #1f2937",
-              borderRadius: 20,
-              padding: 24,
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>{t.availablePlans}</h2>
+                    {isSelected ? (
+                      <div className="mt-4 text-sm font-medium text-blue-300">
+                        {t.selected}
+                      </div>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
-            {plans.length === 0 ? (
-              <div style={{ color: "#a1a1aa" }}>{t.noPlans}</div>
-            ) : (
-              <div style={{ display: "grid", gap: 16 }}>
-                {plans.map((plan) => (
+        <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
+          <h2 className="mb-4 text-2xl font-semibold">{t.plans}</h2>
+
+          {loadingPlans ? (
+            <div className="text-white/70">{t.loadingPlans}</div>
+          ) : plans.length === 0 ? (
+            <div className="text-white/70">{t.noPlans}</div>
+          ) : (
+            <div className="space-y-4">
+              {plans.map((plan) => {
+                const isSelected = plan.id === selectedPlanId;
+                return (
                   <button
                     key={plan.id}
-                    onClick={() => {
-                      setInfoText("");
-                      setErrorText("");
-                      setSelectedPlanId(plan.id);
-                    }}
-                    style={{
-                      textAlign: "left",
-                      background: selectedPlanId === plan.id ? "#13203a" : "#0b1220",
-                      border:
-                        selectedPlanId === plan.id
-                          ? "1px solid #2563eb"
-                          : "1px solid #1f2937",
-                      borderRadius: 18,
-                      padding: 18,
-                      color: "white",
-                      cursor: "pointer",
-                    }}
+                    type="button"
+                    onClick={() => setSelectedPlanId(plan.id)}
+                    className={`w-full rounded-2xl border p-5 text-left transition ${
+                      isSelected
+                        ? "border-blue-500 bg-blue-950/30"
+                        : "border-blue-900/40 bg-[#07101f] hover:border-blue-700/60"
+                    }`}
                   >
-                    <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 10 }}>
-                      {plan.name}
-                    </div>
-                    <div style={{ color: "#d1d5db", lineHeight: 1.8 }}>
+                    <div className="mb-2 text-2xl font-semibold">{plan.name}</div>
+                    <div className="space-y-1 text-base text-white/85">
                       <div>
-                        {t.planPrice}: {plan.priceKzt} KZT
+                        {t.price}: {plan.priceKzt} KZT
                       </div>
                       <div>
                         {t.duration}: {plan.durationDays} {t.days}
                       </div>
+                      <div>ID: {plan.id}</div>
                     </div>
+
+                    {isSelected ? (
+                      <div className="mt-4 text-sm font-medium text-blue-300">
+                        {t.selected}
+                      </div>
+                    ) : null}
                   </button>
-                ))}
+                );
+              })}
+            </div>
+          )}
+
+          <div className="mt-6 rounded-2xl border border-blue-900/40 bg-[#07101f] p-5">
+            <div className="mb-2 text-lg font-semibold">{t.selectedDevice}</div>
+            <div className="mb-4 text-white/80">
+              {selectedDevice ? `${selectedDevice.device.name} (${selectedDevice.device.uid})` : t.chooseDevice}
+            </div>
+
+            <div className="mb-2 text-lg font-semibold">{t.selectedPlan}</div>
+            <div className="mb-4 text-white/80">
+              {selectedPlan
+                ? `${selectedPlan.name} — ${selectedPlan.priceKzt} KZT / ${selectedPlan.durationDays} ${t.days}`
+                : t.choosePlan}
+            </div>
+
+            <div className="mb-3 text-white/70">{t.paymentHint}</div>
+
+            {!PAYPAL_CLIENT_ID ? (
+              <div className="rounded-xl border border-red-700/40 bg-red-950/30 p-4 text-red-300">
+                {t.paypalNotReady}
+              </div>
+            ) : (
+              <div>
+                <div className="mb-3 text-green-400">{t.paypalReady}</div>
+
+                <PayPalScriptProvider
+                  options={{
+                    clientId: PAYPAL_CLIENT_ID,
+                    intent: "capture",
+                    currency: "USD",
+                    components: "buttons",
+                  }}
+                >
+                  <PayPalButtons
+                    key={`${selectedDeviceId}-${selectedPlanId}`}
+                    style={{
+                      layout: "vertical",
+                      shape: "rect",
+                      label: "paypal",
+                    }}
+                    disabled={!paypalEnabled || busy}
+                    forceReRender={[selectedDeviceId, selectedPlanId, busy]}
+                    createOrder={async () => {
+                      if (!token || !selectedDevice || !selectedPlan) {
+                        const msg = !token ? t.authRequired : t.paymentError;
+                        setMessageType("error");
+                        setMessage(msg);
+                        throw new Error(msg);
+                      }
+
+                      setBusy(true);
+                      setMessageType("idle");
+                      setMessage(t.creatingOrder);
+
+                      try {
+                        const data = await apiRequest<CreateOrderResponse>(
+                          "/v1/billing/create-order",
+                          {
+                            method: "POST",
+                            body: JSON.stringify({
+                              deviceId: selectedDevice.device.id,
+                              planId: selectedPlan.id,
+                              lang,
+                            }),
+                          },
+                          token
+                        );
+
+                        if (!data.orderId) {
+                          throw new Error("Missing orderId");
+                        }
+
+                        return data.orderId;
+                      } catch (error) {
+                        const payload = error as ApiErrorPayload;
+                        const msg = buildErrorMessage(lang, t.paymentError, payload);
+                        setMessageType("error");
+                        setMessage(msg);
+                        setBusy(false);
+                        throw new Error(msg);
+                      }
+                    }}
+                    onApprove={async (data) => {
+                      if (!token || !selectedDevice || !selectedPlan) {
+                        const msg = t.paymentError;
+                        setMessageType("error");
+                        setMessage(msg);
+                        setBusy(false);
+                        throw new Error(msg);
+                      }
+
+                      if (!data.orderID) {
+                        const msg = t.paymentError;
+                        setMessageType("error");
+                        setMessage(msg);
+                        setBusy(false);
+                        throw new Error(msg);
+                      }
+
+                      setMessageType("idle");
+                      setMessage(t.capturingOrder);
+
+                      try {
+                        await apiRequest<CaptureOrderResponse>(
+                          "/v1/billing/capture-order",
+                          {
+                            method: "POST",
+                            body: JSON.stringify({
+                              orderId: data.orderID,
+                              deviceId: selectedDevice.device.id,
+                              planId: selectedPlan.id,
+                              lang,
+                            }),
+                          },
+                          token
+                        );
+
+                        await loadDevices(token);
+                        setMessageType("success");
+                        setMessage(t.paymentSuccess);
+                      } catch (error) {
+                        const payload = error as ApiErrorPayload;
+                        const msg = buildErrorMessage(lang, t.paymentError, payload);
+                        setMessageType("error");
+                        setMessage(msg);
+                        throw new Error(msg);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    onCancel={() => {
+                      setBusy(false);
+                      setMessageType("error");
+                      setMessage(t.paymentCancelled);
+                    }}
+                    onError={(error) => {
+                      console.error("PayPal button error:", error);
+                      setBusy(false);
+                      setMessageType("error");
+                      setMessage(t.paymentError);
+                    }}
+                  />
+                </PayPalScriptProvider>
               </div>
             )}
-
-            <div style={{ marginTop: 18, color: "#a1a1aa" }}>{t.choosePlanHint}</div>
-
-            <div style={{ marginTop: 18 }}>
-              {!paypalReady ? (
-                <div style={{ color: "#a1a1aa" }}>{t.paypalLoading}</div>
-              ) : (
-                <div style={{ color: "#86efac", marginBottom: 12 }}>{t.paypalReady}</div>
-              )}
-
-              {selectedDevice && !selectedDevice.status.isPaired ? (
-                <div
-                  style={{
-                    background: "#1f2937",
-                    color: "#fca5a5",
-                    padding: 12,
-                    borderRadius: 12,
-                    border: "1px solid #374151",
-                    marginBottom: 12,
-                  }}
-                >
-                  {t.notPaired}
-                </div>
-              ) : null}
-
-              {selectedDevice?.subscription.active ? (
-                <div
-                  style={{
-                    background: "#1f2937",
-                    color: "#fde68a",
-                    padding: 12,
-                    borderRadius: 12,
-                    border: "1px solid #374151",
-                    marginBottom: 12,
-                  }}
-                >
-                  {t.alreadyActive}
-                </div>
-              ) : null}
-
-              {!selectedDevice || !selectedPlan ? (
-                <div style={{ color: "#a1a1aa" }}>{t.selectDevice}</div>
-              ) : null}
-
-              {!canRenderPayPal && selectedDevice && selectedPlan && !selectedDevice.subscription.active && !selectedDevice.status.isPaired ? (
-                <div style={{ color: "#a1a1aa" }}>{t.cannotPayNow}</div>
-              ) : null}
-
-              <div ref={paypalRef} />
-            </div>
           </div>
-        </div>
-
-        <div
-          style={{
-            background: "#111827",
-            border: "1px solid #1f2937",
-            borderRadius: 20,
-            padding: 24,
-          }}
-        >
-          <h2 style={{ marginTop: 0 }}>{t.billingStubTitle}</h2>
-          <p style={{ color: "#a1a1aa", marginBottom: 0 }}>{t.billingStubText}</p>
-        </div>
+        </section>
       </div>
     </main>
   );
