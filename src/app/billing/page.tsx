@@ -129,15 +129,15 @@ const TEXT = {
     loadingPlans: "Загружаем планы...",
     noDevices: "У тебя пока нет устройств.",
     noPlans: "Планы пока не найдены.",
-    myDevices: "Мои устройства",
-    plans: "Планы",
+    myDevices: "Твои устройства",
+    plans: "Доступные планы",
     selected: "Выбрано",
     chooseDevice: "Сначала выбери устройство слева.",
     choosePlan: "Теперь выбери план справа.",
     paypalReady: "PayPal готов",
     paypalNotReady:
       "PayPal Client ID не найден. Проверь NEXT_PUBLIC_PAYPAL_CLIENT_ID в Vercel.",
-    paymentHint: "После оплаты доступ активируется автоматически.",
+    paymentHint: "Выбери план справа, затем оплати через PayPal.",
     creatingOrder: "Создаём заказ PayPal...",
     capturingOrder: "Подтверждаем оплату...",
     paymentSuccess: "Оплата прошла успешно. Подписка активирована.",
@@ -161,6 +161,10 @@ const TEXT = {
     selectedDevice: "Выбранное устройство",
     selectedPlan: "Выбранный план",
     status: "Статус",
+    automaticActivation: "Автоматическая активация",
+    automaticActivationText:
+      "После успешной оплаты backend автоматически создаст DeviceSubscription и устройство сразу получит доступ.",
+    processing: "Идёт обработка...",
   },
   en: {
     title: "Billing",
@@ -172,15 +176,15 @@ const TEXT = {
     loadingPlans: "Loading plans...",
     noDevices: "You do not have any devices yet.",
     noPlans: "No plans found.",
-    myDevices: "My devices",
-    plans: "Plans",
+    myDevices: "Your devices",
+    plans: "Available plans",
     selected: "Selected",
     chooseDevice: "First choose a device on the left.",
     choosePlan: "Now choose a plan on the right.",
     paypalReady: "PayPal is ready",
     paypalNotReady:
       "PayPal Client ID is missing. Check NEXT_PUBLIC_PAYPAL_CLIENT_ID in Vercel.",
-    paymentHint: "Access will be activated automatically after payment.",
+    paymentHint: "Choose a plan on the right, then pay with PayPal.",
     creatingOrder: "Creating PayPal order...",
     capturingOrder: "Capturing payment...",
     paymentSuccess: "Payment completed successfully. Subscription activated.",
@@ -204,6 +208,10 @@ const TEXT = {
     selectedDevice: "Selected device",
     selectedPlan: "Selected plan",
     status: "Status",
+    automaticActivation: "Automatic activation",
+    automaticActivationText:
+      "After successful payment, the backend will automatically create DeviceSubscription and the device will get access immediately.",
+    processing: "Processing...",
   },
 } as const;
 
@@ -235,7 +243,6 @@ function formatDate(value: string | null, lang: Lang): string {
 }
 
 function buildErrorMessage(
-  lang: Lang,
   fallback: string,
   payload?: ApiErrorPayload | null
 ): string {
@@ -287,7 +294,7 @@ export default function BillingPage() {
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [loadingDevices, setLoadingDevices] = useState(true);
   const [loadingPlans, setLoadingPlans] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"idle" | "success" | "error">(
     "idle"
@@ -548,7 +555,9 @@ export default function BillingPage() {
           <div className="mt-6 rounded-2xl border border-blue-900/40 bg-[#07101f] p-5">
             <div className="mb-2 text-lg font-semibold">{t.selectedDevice}</div>
             <div className="mb-4 text-white/80">
-              {selectedDevice ? `${selectedDevice.device.name} (${selectedDevice.device.uid})` : t.chooseDevice}
+              {selectedDevice
+                ? `${selectedDevice.device.name} (${selectedDevice.device.uid})`
+                : t.chooseDevice}
             </div>
 
             <div className="mb-2 text-lg font-semibold">{t.selectedPlan}</div>
@@ -583,8 +592,8 @@ export default function BillingPage() {
                       shape: "rect",
                       label: "paypal",
                     }}
-                    disabled={!paypalEnabled || busy}
-                    forceReRender={[selectedDeviceId, selectedPlanId, busy]}
+                    disabled={!paypalEnabled || isCapturing}
+                    forceReRender={[selectedDeviceId, selectedPlanId]}
                     createOrder={async () => {
                       if (!token || !selectedDevice || !selectedPlan) {
                         const msg = !token ? t.authRequired : t.paymentError;
@@ -593,7 +602,6 @@ export default function BillingPage() {
                         throw new Error(msg);
                       }
 
-                      setBusy(true);
                       setMessageType("idle");
                       setMessage(t.creatingOrder);
 
@@ -618,30 +626,21 @@ export default function BillingPage() {
                         return data.orderId;
                       } catch (error) {
                         const payload = error as ApiErrorPayload;
-                        const msg = buildErrorMessage(lang, t.paymentError, payload);
+                        const msg = buildErrorMessage(t.paymentError, payload);
                         setMessageType("error");
                         setMessage(msg);
-                        setBusy(false);
                         throw new Error(msg);
                       }
                     }}
                     onApprove={async (data) => {
-                      if (!token || !selectedDevice || !selectedPlan) {
+                      if (!token || !selectedDevice || !selectedPlan || !data.orderID) {
                         const msg = t.paymentError;
                         setMessageType("error");
                         setMessage(msg);
-                        setBusy(false);
                         throw new Error(msg);
                       }
 
-                      if (!data.orderID) {
-                        const msg = t.paymentError;
-                        setMessageType("error");
-                        setMessage(msg);
-                        setBusy(false);
-                        throw new Error(msg);
-                      }
-
+                      setIsCapturing(true);
                       setMessageType("idle");
                       setMessage(t.capturingOrder);
 
@@ -665,22 +664,22 @@ export default function BillingPage() {
                         setMessage(t.paymentSuccess);
                       } catch (error) {
                         const payload = error as ApiErrorPayload;
-                        const msg = buildErrorMessage(lang, t.paymentError, payload);
+                        const msg = buildErrorMessage(t.paymentError, payload);
                         setMessageType("error");
                         setMessage(msg);
                         throw new Error(msg);
                       } finally {
-                        setBusy(false);
+                        setIsCapturing(false);
                       }
                     }}
                     onCancel={() => {
-                      setBusy(false);
+                      setIsCapturing(false);
                       setMessageType("error");
                       setMessage(t.paymentCancelled);
                     }}
                     onError={(error) => {
                       console.error("PayPal button error:", error);
-                      setBusy(false);
+                      setIsCapturing(false);
                       setMessageType("error");
                       setMessage(t.paymentError);
                     }}
@@ -690,6 +689,13 @@ export default function BillingPage() {
             )}
           </div>
         </section>
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
+        <div className="mb-2 text-2xl font-semibold">{t.automaticActivation}</div>
+        <div className="text-white/70">
+          {isCapturing ? t.processing : t.automaticActivationText}
+        </div>
       </div>
     </main>
   );
