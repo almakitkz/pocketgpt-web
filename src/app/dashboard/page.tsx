@@ -6,6 +6,27 @@ import { getToken, getUser } from "@/lib/auth";
 
 type Lang = "ru" | "en";
 
+type Plan = {
+  id: string;
+  name: string;
+  priceKzt: number;
+  durationDays: number;
+  requestLimit: number | null;
+  createdAt?: string | null;
+};
+
+type UsageState = {
+  scope: string | null;
+  scopeRefId: string | null;
+  requestLimit: number | null;
+  usedRequests: number;
+  remainingRequests: number | null;
+  periodStartedAt: string | null;
+  periodEndsAt: string | null;
+  trialActive: boolean;
+  subscriptionActive: boolean;
+};
+
 type DeviceItem = {
   device: {
     id: string;
@@ -29,17 +50,33 @@ type DeviceItem = {
     active: boolean;
     id: string | null;
     planId: string | null;
-    plan: {
-      id: string;
-      name: string;
-      priceKzt: number;
-      durationDays: number;
-      createdAt: string | null;
-    } | null;
+    plan: Plan | null;
     status: string | null;
     trialEnd: string | null;
+    currentPeriodStart?: string | null;
     currentPeriodEnd: string | null;
   };
+  usage: UsageState;
+};
+
+type PaymentItem = {
+  id: string;
+  provider: string;
+  status: string;
+  amountKzt: number;
+  currency: string;
+  paypalOrderId: string | null;
+  paypalCaptureId: string | null;
+  subscriptionId: string | null;
+  note: string | null;
+  device: {
+    id: string;
+    uid: string;
+    name: string;
+  } | null;
+  plan: Plan | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 };
 
 type LocalUser = {
@@ -56,6 +93,8 @@ const TEXT = {
     userId: "User ID",
     myDevices: "Мои устройства",
     noDevices: "У тебя пока нет привязанных устройств.",
+    paymentHistory: "История оплат",
+    noPayments: "История оплат пока пуста.",
     active: "Активно",
     inactive: "Неактивно",
     deviceId: "Device ID",
@@ -71,7 +110,18 @@ const TEXT = {
     inactiveSub: "неактивна",
     until: "до",
     planPrice: "Цена плана",
+    requestLimit: "Лимит",
+    usedRequests: "Использовано",
+    remainingRequests: "Осталось",
+    period: "Период",
     days: "дней",
+    requests: "запросов",
+    amount: "Сумма",
+    provider: "Провайдер",
+    paidAt: "Оплачено",
+    currentPlan: "Текущий план",
+    openBilling: "Открыть billing",
+    unlimited: "без лимита",
   },
   en: {
     loading: "Loading...",
@@ -81,6 +131,8 @@ const TEXT = {
     userId: "User ID",
     myDevices: "My devices",
     noDevices: "You do not have any paired devices yet.",
+    paymentHistory: "Payment history",
+    noPayments: "Payment history is empty.",
     active: "Active",
     inactive: "Inactive",
     deviceId: "Device ID",
@@ -96,22 +148,32 @@ const TEXT = {
     inactiveSub: "inactive",
     until: "until",
     planPrice: "Plan price",
+    requestLimit: "Request limit",
+    usedRequests: "Used",
+    remainingRequests: "Remaining",
+    period: "Period",
     days: "days",
+    requests: "requests",
+    amount: "Amount",
+    provider: "Provider",
+    paidAt: "Paid at",
+    currentPlan: "Current plan",
+    openBilling: "Open billing",
+    unlimited: "unlimited",
   },
 };
 
 function getLang(): Lang {
   if (typeof window === "undefined") return "ru";
-  return localStorage.getItem("site_lang") === "en" ? "en" : "ru";
+  const v = localStorage.getItem("site_lang") || localStorage.getItem("lang") || "ru";
+  return v === "en" ? "en" : "ru";
 }
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, lang: Lang): string {
   if (!value) return "—";
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleString();
+  return date.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
 }
 
 function getAccessBadge(hasAccess: boolean, lang: Lang) {
@@ -125,11 +187,18 @@ function getAccessBadge(hasAccess: boolean, lang: Lang) {
   };
 }
 
+function formatRequestLimit(value: number | null | undefined, lang: Lang): string {
+  const t = TEXT[lang];
+  if (value === null || value === undefined || value <= 0) return t.unlimited;
+  return `${value} ${t.requests}`;
+}
+
 export default function DashboardPage() {
   const [lang, setLang] = useState<Lang>("ru");
   const t = TEXT[lang];
 
   const [devices, setDevices] = useState<DeviceItem[]>([]);
+  const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState("");
   const [user, setUser] = useState<LocalUser | null>(null);
@@ -157,13 +226,15 @@ export default function DashboardPage() {
     setUser(localUser);
     setReady(true);
 
-    async function loadDevices() {
+    async function loadData() {
       try {
-        const data = await apiFetch("/v1/user/devices", {
-          method: "GET",
-        });
+        const [devicesData, paymentsData] = await Promise.all([
+          apiFetch("/v1/user/devices", { method: "GET" }),
+          apiFetch("/v1/billing/history?limit=10", { method: "GET" }),
+        ]);
 
-        setDevices(data.devices || []);
+        setDevices(devicesData.devices || []);
+        setPayments(paymentsData.payments || []);
       } catch (err) {
         setErrorText(err instanceof Error ? err.message : "Load failed");
       } finally {
@@ -171,7 +242,7 @@ export default function DashboardPage() {
       }
     }
 
-    void loadDevices();
+    void loadData();
   }, []);
 
   if (!ready) {
@@ -219,6 +290,22 @@ export default function DashboardPage() {
               {t.userId}: {user?.id || "—"}
             </div>
           </div>
+
+          <a
+            href="/billing"
+            style={{
+              display: "inline-block",
+              marginTop: 16,
+              background: "#2563eb",
+              color: "white",
+              textDecoration: "none",
+              padding: "10px 14px",
+              borderRadius: 12,
+              fontWeight: 600,
+            }}
+          >
+            {t.openBilling}
+          </a>
         </div>
 
         <div
@@ -227,6 +314,7 @@ export default function DashboardPage() {
             border: "1px solid #1f2937",
             borderRadius: 20,
             padding: 24,
+            marginBottom: 20,
           }}
         >
           <h2 style={{ marginTop: 0, marginBottom: 12 }}>{t.myDevices}</h2>
@@ -303,7 +391,7 @@ export default function DashboardPage() {
                       {t.paired}: {item.status.isPaired ? t.yes : t.no}
                     </div>
                     <div>
-                      {t.created}: {formatDate(item.device.createdAt)}
+                      {t.created}: {formatDate(item.device.createdAt, lang)}
                     </div>
                   </div>
 
@@ -320,8 +408,8 @@ export default function DashboardPage() {
                       {t.trial}:{" "}
                       {item.trial.exists
                         ? item.trial.active
-                          ? `${t.activeUntil} ${formatDate(item.trial.expiresAt)}`
-                          : `${t.expiredAt} ${formatDate(item.trial.expiresAt)}`
+                          ? `${t.activeUntil} ${formatDate(item.trial.expiresAt, lang)}`
+                          : `${t.expiredAt} ${formatDate(item.trial.expiresAt, lang)}`
                         : t.notStarted}
                     </div>
 
@@ -329,11 +417,29 @@ export default function DashboardPage() {
                       {t.subscription}:{" "}
                       {item.subscription.active
                         ? `${item.subscription.plan?.name || "plan"} ${t.until} ${formatDate(
-                            item.subscription.currentPeriodEnd
+                            item.subscription.currentPeriodEnd,
+                            lang
                           )}`
                         : item.subscription.plan
                         ? `${item.subscription.plan.name} ${t.inactiveSub}`
                         : t.inactiveSub}
+                    </div>
+
+                    <div>
+                      {t.currentPlan}: {item.subscription.plan?.name || "—"}
+                    </div>
+
+                    <div>
+                      {t.requestLimit}: {formatRequestLimit(item.usage.requestLimit, lang)}
+                    </div>
+                    <div>
+                      {t.usedRequests}: {item.usage.usedRequests}
+                    </div>
+                    <div>
+                      {t.remainingRequests}: {item.usage.remainingRequests ?? "—"}
+                    </div>
+                    <div>
+                      {t.period}: {formatDate(item.usage.periodStartedAt, lang)} — {formatDate(item.usage.periodEndsAt, lang)}
                     </div>
 
                     {item.subscription.plan ? (
@@ -346,6 +452,63 @@ export default function DashboardPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: "#111827",
+            border: "1px solid #1f2937",
+            borderRadius: 20,
+            padding: 24,
+          }}
+        >
+          <h2 style={{ marginTop: 0, marginBottom: 12 }}>{t.paymentHistory}</h2>
+
+          {loading ? <div style={{ color: "#a1a1aa" }}>{t.loading}</div> : null}
+
+          {!loading && !errorText && payments.length === 0 ? (
+            <div style={{ color: "#a1a1aa" }}>{t.noPayments}</div>
+          ) : null}
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {payments.map((payment) => (
+              <div
+                key={payment.id}
+                style={{
+                  background: "#0b1220",
+                  border: "1px solid #1f2937",
+                  borderRadius: 16,
+                  padding: 16,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 16,
+                    flexWrap: "wrap",
+                    marginBottom: 8,
+                  }}
+                >
+                  <div style={{ fontWeight: 700 }}>
+                    {payment.plan?.name || "Plan"} — {payment.amountKzt} {payment.currency}
+                  </div>
+                  <div style={{ color: "#86efac" }}>{payment.status}</div>
+                </div>
+                <div style={{ color: "#cbd5e1", lineHeight: 1.8 }}>
+                  <div>
+                    {t.provider}: {payment.provider}
+                  </div>
+                  <div>
+                    {t.amount}: {payment.amountKzt} {payment.currency}
+                  </div>
+                  <div>
+                    {t.paidAt}: {formatDate(payment.createdAt, lang)}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
