@@ -502,8 +502,8 @@ export default function BillingPage() {
 
   if (!mounted) {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-10 text-white">
-        <div className="rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
+      <main className="mx-auto max-w-6xl px-4 py-6 text-white sm:px-6 sm:py-10">
+        <div className="rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
           {TEXT.ru.loading}
         </div>
       </main>
@@ -512,8 +512,8 @@ export default function BillingPage() {
 
   if (!token) {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-10 text-white">
-        <div className="rounded-3xl border border-red-900/40 bg-[#081226] p-6 text-red-300">
+      <main className="mx-auto max-w-6xl px-4 py-6 text-white sm:px-6 sm:py-10">
+        <div className="rounded-3xl border border-red-900/40 bg-[#081226] p-5 text-red-300 sm:p-6">
           {t.authRequired}
         </div>
       </main>
@@ -521,15 +521,15 @@ export default function BillingPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10 text-white">
-      <div className="mb-6 rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
-        <div className="mb-2 text-3xl font-bold">{t.title}</div>
-        <div className="text-white/70">{t.subtitle}</div>
+    <main className="mx-auto max-w-6xl px-4 py-6 text-white sm:px-6 sm:py-10">
+      <div className="mb-5 rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:mb-6 sm:p-6">
+        <div className="mb-2 text-2xl font-bold sm:text-3xl">{t.title}</div>
+        <div className="text-sm text-white/70 sm:text-base">{t.subtitle}</div>
       </div>
 
       {message ? (
         <div
-          className={`mb-6 rounded-2xl border p-4 ${
+          className={`mb-5 rounded-2xl border p-4 sm:mb-6 ${
             messageType === "success"
               ? "border-green-700/50 bg-green-950/30 text-green-300"
               : messageType === "error"
@@ -541,18 +541,18 @@ export default function BillingPage() {
         </div>
       ) : null}
 
-      <div className="mb-6 flex justify-end">
+      <div className="mb-5 flex justify-stretch sm:mb-6 sm:justify-end">
         <button
           onClick={() => void refreshAll()}
-          className="rounded-xl border border-blue-700/50 bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
+          className="w-full rounded-xl border border-blue-700/50 bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-500 sm:w-auto sm:py-2"
         >
           {t.refresh}
         </button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
-          <h2 className="mb-4 text-2xl font-semibold">{t.myDevices}</h2>
+      <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
+        <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
+          <h2 className="mb-4 text-xl font-semibold sm:text-2xl">{t.myDevices}</h2>
 
           {loadingDevices ? (
             <div className="text-white/70">{t.loadingDevices}</div>
@@ -567,16 +567,18 @@ export default function BillingPage() {
                     key={item.device.id}
                     type="button"
                     onClick={() => setSelectedDeviceId(item.device.id)}
-                    className={`w-full rounded-2xl border p-5 text-left transition ${
+                    className={`w-full rounded-2xl border p-4 text-left transition sm:p-5 ${
                       isSelected
                         ? "border-blue-500 bg-blue-950/30"
                         : "border-blue-900/40 bg-[#07101f] hover:border-blue-700/60"
                     }`}
                   >
-                    <div className="mb-2 flex items-center justify-between gap-4">
-                      <div className="text-2xl font-semibold">{item.device.name}</div>
+                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 text-xl font-semibold break-words sm:text-2xl">
+                        {item.device.name}
+                      </div>
                       <div
-                        className={`rounded-full px-3 py-1 text-sm font-medium ${
+                        className={`inline-flex w-fit rounded-full px-3 py-1 text-sm font-medium ${
                           item.status.hasAccess
                             ? "bg-green-900/40 text-green-300"
                             : "bg-red-900/40 text-red-300"
@@ -586,8 +588,8 @@ export default function BillingPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-1 text-base text-white/85">
-                      <div>UID: {item.device.uid}</div>
+                    <div className="space-y-1 break-words text-sm text-white/85 sm:text-base">
+                      <div className="break-all">UID: {item.device.uid}</div>
                       <div>
                         {t.paired}: {item.status.isPaired ? t.yes : t.no}
                       </div>
@@ -623,8 +625,8 @@ export default function BillingPage() {
           )}
         </section>
 
-        <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
-          <h2 className="mb-4 text-2xl font-semibold">{t.plans}</h2>
+        <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
+          <h2 className="mb-4 text-xl font-semibold sm:text-2xl">{t.plans}</h2>
 
           {loadingPlans ? (
             <div className="text-white/70">{t.loadingPlans}</div>
@@ -639,14 +641,16 @@ export default function BillingPage() {
                     key={plan.id}
                     type="button"
                     onClick={() => setSelectedPlanId(plan.id)}
-                    className={`w-full rounded-2xl border p-5 text-left transition ${
+                    className={`w-full rounded-2xl border p-4 text-left transition sm:p-5 ${
                       isSelected
                         ? "border-blue-500 bg-blue-950/30"
                         : "border-blue-900/40 bg-[#07101f] hover:border-blue-700/60"
                     }`}
                   >
-                    <div className="mb-2 text-2xl font-semibold">{plan.name}</div>
-                    <div className="space-y-1 text-base text-white/85">
+                    <div className="mb-2 break-words text-xl font-semibold sm:text-2xl">
+                      {plan.name}
+                    </div>
+                    <div className="space-y-1 text-sm text-white/85 sm:text-base">
                       <div>
                         {t.price}: {plan.priceKzt} KZT
                       </div>
@@ -669,16 +673,16 @@ export default function BillingPage() {
             </div>
           )}
 
-          <div className="mt-6 rounded-2xl border border-blue-900/40 bg-[#07101f] p-5">
-            <div className="mb-2 text-lg font-semibold">{t.selectedDevice}</div>
-            <div className="mb-4 text-white/80">
+          <div className="mt-6 rounded-2xl border border-blue-900/40 bg-[#07101f] p-4 sm:p-5">
+            <div className="mb-2 text-base font-semibold sm:text-lg">{t.selectedDevice}</div>
+            <div className="mb-4 break-words text-sm text-white/80 sm:text-base">
               {selectedDevice
                 ? `${selectedDevice.device.name} (${selectedDevice.device.uid})`
                 : t.chooseDevice}
             </div>
 
-            <div className="mb-2 text-lg font-semibold">{t.selectedPlan}</div>
-            <div className="mb-4 text-white/80">
+            <div className="mb-2 text-base font-semibold sm:text-lg">{t.selectedPlan}</div>
+            <div className="mb-4 break-words text-sm text-white/80 sm:text-base">
               {selectedPlan
                 ? `${selectedPlan.name} — ${selectedPlan.priceKzt} KZT / ${selectedPlan.durationDays} ${t.days}`
                 : t.choosePlan}
@@ -696,15 +700,15 @@ export default function BillingPage() {
               </div>
             ) : null}
 
-            <div className="mb-3 text-white/70">{t.paymentHint}</div>
+            <div className="mb-3 text-sm text-white/70 sm:text-base">{t.paymentHint}</div>
 
             {!PAYPAL_CLIENT_ID ? (
-              <div className="rounded-xl border border-red-700/40 bg-red-950/30 p-4 text-red-300">
+              <div className="rounded-xl border border-red-700/40 bg-red-950/30 p-4 text-sm text-red-300 sm:text-base">
                 {t.paypalNotReady}
               </div>
             ) : (
               <div>
-                <div className="mb-3 text-green-400">{t.paypalReady}</div>
+                <div className="mb-3 text-sm text-green-400 sm:text-base">{t.paypalReady}</div>
 
                 <PayPalScriptProvider
                   options={{
@@ -714,108 +718,110 @@ export default function BillingPage() {
                     components: "buttons",
                   }}
                 >
-                  <PayPalButtons
-                    key={`${selectedDeviceId}-${selectedPlanId}`}
-                    style={{
-                      layout: "vertical",
-                      shape: "rect",
-                      label: "paypal",
-                    }}
-                    disabled={!paypalEnabled || isCapturing}
-                    forceReRender={[selectedDeviceId, selectedPlanId]}
-                    createOrder={async () => {
-                      if (!token || !selectedDevice || !selectedPlan) {
-                        const msg = !token ? t.authRequired : t.paymentError;
-                        setMessageType("error");
-                        setMessage(msg);
-                        throw new Error(msg);
-                      }
-
-                      setMessageType("idle");
-                      setMessage(t.creatingOrder);
-
-                      try {
-                        const data = await apiRequest<CreateOrderResponse>(
-                          "/v1/billing/create-order",
-                          {
-                            method: "POST",
-                            body: JSON.stringify({
-                              deviceId: selectedDevice.device.id,
-                              planId: selectedPlan.id,
-                              lang,
-                            }),
-                          },
-                          token
-                        );
-
-                        if (!data.orderId) {
-                          throw new Error("Missing orderId");
+                  <div className="[&_.paypal-buttons]:w-full">
+                    <PayPalButtons
+                      key={`${selectedDeviceId}-${selectedPlanId}`}
+                      style={{
+                        layout: "vertical",
+                        shape: "rect",
+                        label: "paypal",
+                      }}
+                      disabled={!paypalEnabled || isCapturing}
+                      forceReRender={[selectedDeviceId, selectedPlanId]}
+                      createOrder={async () => {
+                        if (!token || !selectedDevice || !selectedPlan) {
+                          const msg = !token ? t.authRequired : t.paymentError;
+                          setMessageType("error");
+                          setMessage(msg);
+                          throw new Error(msg);
                         }
 
-                        return data.orderId;
-                      } catch (error) {
-                        const payload = error as ApiErrorPayload;
-                        const msg = buildErrorMessage(t.paymentError, payload);
-                        setMessageType("error");
-                        setMessage(msg);
-                        throw new Error(msg);
-                      }
-                    }}
-                    onApprove={async (data) => {
-                      if (!token || !selectedDevice || !selectedPlan || !data.orderID) {
-                        const msg = t.paymentError;
-                        setMessageType("error");
-                        setMessage(msg);
-                        throw new Error(msg);
-                      }
+                        setMessageType("idle");
+                        setMessage(t.creatingOrder);
 
-                      setIsCapturing(true);
-                      setMessageType("idle");
-                      setMessage(t.capturingOrder);
+                        try {
+                          const data = await apiRequest<CreateOrderResponse>(
+                            "/v1/billing/create-order",
+                            {
+                              method: "POST",
+                              body: JSON.stringify({
+                                deviceId: selectedDevice.device.id,
+                                planId: selectedPlan.id,
+                                lang,
+                              }),
+                            },
+                            token
+                          );
 
-                      try {
-                        await apiRequest<CaptureOrderResponse>(
-                          "/v1/billing/capture-order",
-                          {
-                            method: "POST",
-                            body: JSON.stringify({
-                              orderId: data.orderID,
-                              deviceId: selectedDevice.device.id,
-                              planId: selectedPlan.id,
-                              lang,
-                            }),
-                          },
-                          token
-                        );
+                          if (!data.orderId) {
+                            throw new Error("Missing orderId");
+                          }
 
-                        await Promise.all([
-                          loadDevices(token),
-                          loadPayments(token, selectedDevice.device.id),
-                        ]);
-                        setMessageType("success");
-                        setMessage(t.paymentSuccess);
-                      } catch (error) {
-                        const payload = error as ApiErrorPayload;
-                        const msg = buildErrorMessage(t.paymentError, payload);
-                        setMessageType("error");
-                        setMessage(msg);
-                        throw new Error(msg);
-                      } finally {
+                          return data.orderId;
+                        } catch (error) {
+                          const payload = error as ApiErrorPayload;
+                          const msg = buildErrorMessage(t.paymentError, payload);
+                          setMessageType("error");
+                          setMessage(msg);
+                          throw new Error(msg);
+                        }
+                      }}
+                      onApprove={async (data) => {
+                        if (!token || !selectedDevice || !selectedPlan || !data.orderID) {
+                          const msg = t.paymentError;
+                          setMessageType("error");
+                          setMessage(msg);
+                          throw new Error(msg);
+                        }
+
+                        setIsCapturing(true);
+                        setMessageType("idle");
+                        setMessage(t.capturingOrder);
+
+                        try {
+                          await apiRequest<CaptureOrderResponse>(
+                            "/v1/billing/capture-order",
+                            {
+                              method: "POST",
+                              body: JSON.stringify({
+                                orderId: data.orderID,
+                                deviceId: selectedDevice.device.id,
+                                planId: selectedPlan.id,
+                                lang,
+                              }),
+                            },
+                            token
+                          );
+
+                          await Promise.all([
+                            loadDevices(token),
+                            loadPayments(token, selectedDevice.device.id),
+                          ]);
+                          setMessageType("success");
+                          setMessage(t.paymentSuccess);
+                        } catch (error) {
+                          const payload = error as ApiErrorPayload;
+                          const msg = buildErrorMessage(t.paymentError, payload);
+                          setMessageType("error");
+                          setMessage(msg);
+                          throw new Error(msg);
+                        } finally {
+                          setIsCapturing(false);
+                        }
+                      }}
+                      onCancel={() => {
                         setIsCapturing(false);
-                      }
-                    }}
-                    onCancel={() => {
-                      setIsCapturing(false);
-                      setMessageType("error");
-                      setMessage(t.paymentCancelled);
-                    }}
-                    onError={(error) => {
-                      console.error("PayPal button error:", error);
-                      setIsCapturing(false);
-                      setMessageType("error");
-                      setMessage(t.paymentError);
-                    }}
-                  />
+                        setMessageType("error");
+                        setMessage(t.paymentCancelled);
+                      }}
+                      onError={(error) => {
+                        console.error("PayPal button error:", error);
+                        setIsCapturing(false);
+                        setMessageType("error");
+                        setMessage(t.paymentError);
+                      }}
+                    />
+                  </div>
                 </PayPalScriptProvider>
               </div>
             )}
@@ -823,8 +829,8 @@ export default function BillingPage() {
         </section>
       </div>
 
-      <div className="mt-6 rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
-        <div className="mb-4 text-2xl font-semibold">{t.paymentHistory}</div>
+      <div className="mt-5 rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:mt-6 sm:p-6">
+        <div className="mb-4 text-xl font-semibold sm:text-2xl">{t.paymentHistory}</div>
 
         {loadingPayments ? (
           <div className="text-white/70">{t.loadingPayments}</div>
@@ -837,15 +843,15 @@ export default function BillingPage() {
                 key={payment.id}
                 className="rounded-2xl border border-blue-900/40 bg-[#07101f] p-4"
               >
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-                  <div className="text-lg font-semibold">
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                  <div className="break-words text-base font-semibold sm:text-lg">
                     {payment.plan?.name || "Plan"} — {payment.amountKzt} KZT
                   </div>
-                  <div className="rounded-full bg-green-900/30 px-3 py-1 text-sm text-green-300">
+                  <div className="inline-flex w-fit rounded-full bg-green-900/30 px-3 py-1 text-sm text-green-300">
                     {payment.status}
                   </div>
                 </div>
-                <div className="space-y-1 text-sm text-white/75">
+                <div className="space-y-1 break-words text-sm text-white/75">
                   <div>
                     {t.provider}: {payment.provider}
                   </div>
@@ -865,9 +871,9 @@ export default function BillingPage() {
         )}
       </div>
 
-      <div className="mt-6 rounded-3xl border border-blue-900/40 bg-[#081226] p-6">
-        <div className="mb-2 text-2xl font-semibold">{t.automaticActivation}</div>
-        <div className="text-white/70">
+      <div className="mt-5 rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:mt-6 sm:p-6">
+        <div className="mb-2 text-xl font-semibold sm:text-2xl">{t.automaticActivation}</div>
+        <div className="text-sm text-white/70 sm:text-base">
           {isCapturing ? t.processing : t.automaticActivationText}
         </div>
       </div>

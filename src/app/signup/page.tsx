@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { saveAuth } from "@/lib/auth";
@@ -29,7 +30,7 @@ const TEXT = {
     loginHint: "Already have an account?",
     loginLink: "Log in",
   },
-};
+} as const;
 
 function getLang(): Lang {
   if (typeof window === "undefined") return "ru";
@@ -79,32 +80,12 @@ export default function SignupPage() {
   }
 
   return (
-    <main
-      style={{
-        minHeight: "calc(100vh - 80px)",
-        background: "#050816",
-        color: "white",
-        padding: 32,
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 520,
-          margin: "40px auto",
-          background: "#111827",
-          border: "1px solid #1f2937",
-          borderRadius: 20,
-          padding: 24,
-          boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-        }}
-      >
-        <h1 style={{ marginTop: 0, marginBottom: 10 }}>{t.title}</h1>
-        <p style={{ color: "#a1a1aa", marginTop: 0 }}>{t.subtitle}</p>
+    <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-6 text-white sm:px-6 sm:py-10">
+      <div className="mx-auto w-full max-w-[520px] rounded-3xl border border-[#1f2937] bg-[#111827] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.25)] sm:p-6">
+        <h1 className="mb-2 text-3xl font-bold">{t.title}</h1>
+        <p className="mt-0 text-sm text-[#a1a1aa] sm:text-base">{t.subtitle}</p>
 
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: "grid", gap: 14, marginTop: 20 }}
-        >
+        <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
           <input
             type="email"
             placeholder={t.emailPlaceholder}
@@ -112,14 +93,7 @@ export default function SignupPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            style={{
-              padding: 14,
-              borderRadius: 12,
-              border: "1px solid #374151",
-              background: "#0b1220",
-              color: "white",
-              outline: "none",
-            }}
+            className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition placeholder:text-white/40 focus:border-blue-500"
           />
 
           <input
@@ -129,26 +103,11 @@ export default function SignupPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="new-password"
-            style={{
-              padding: 14,
-              borderRadius: 12,
-              border: "1px solid #374151",
-              background: "#0b1220",
-              color: "white",
-              outline: "none",
-            }}
+            className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition placeholder:text-white/40 focus:border-blue-500"
           />
 
           {errorText ? (
-            <div
-              style={{
-                background: "#3f1d1d",
-                color: "#fecaca",
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid #7f1d1d",
-              }}
-            >
+            <div className="rounded-xl border border-[#7f1d1d] bg-[#3f1d1d] p-3 text-sm text-[#fecaca]">
               {errorText}
             </div>
           ) : null}
@@ -156,32 +115,17 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            style={{
-              background: "#2563eb",
-              color: "white",
-              border: "none",
-              borderRadius: 12,
-              padding: 14,
-              cursor: loading ? "default" : "pointer",
-              opacity: loading ? 0.8 : 1,
-              fontWeight: 600,
-            }}
+            className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-default disabled:opacity-80"
           >
             {loading ? t.loading : t.submit}
           </button>
         </form>
 
-        <div style={{ marginTop: 18, color: "#a1a1aa", fontSize: 14 }}>
+        <div className="mt-5 text-sm text-[#a1a1aa]">
           {t.loginHint}{" "}
-          <a
-            href="/login"
-            style={{
-              color: "#60a5fa",
-              textDecoration: "none",
-            }}
-          >
+          <Link href="/login" className="text-[#60a5fa] no-underline hover:text-blue-300">
             {t.loginLink}
-          </a>
+          </Link>
         </div>
       </div>
     </main>

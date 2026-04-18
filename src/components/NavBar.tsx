@@ -15,6 +15,8 @@ const NAV_TEXT = {
     login: "Войти",
     signup: "Регистрация",
     logout: "Выйти",
+    menu: "Меню",
+    close: "Закрыть",
   },
   en: {
     home: "Home",
@@ -24,8 +26,10 @@ const NAV_TEXT = {
     login: "Login",
     signup: "Signup",
     logout: "Logout",
+    menu: "Menu",
+    close: "Close",
   },
-};
+} as const;
 
 function getSavedLang(): Lang {
   if (typeof window === "undefined") return "ru";
@@ -37,11 +41,18 @@ export default function NavBar() {
   const [isAuthed, setIsAuthed] = useState(false);
   const [ready, setReady] = useState(false);
   const [lang, setLang] = useState<Lang>("ru");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     setIsAuthed(!!getToken());
     setLang(getSavedLang());
     setReady(true);
+  }, []);
+
+  useEffect(() => {
+    const closeMenu = () => setMenuOpen(false);
+    window.addEventListener("resize", closeMenu);
+    return () => window.removeEventListener("resize", closeMenu);
   }, []);
 
   function handleLogout() {
@@ -58,111 +69,191 @@ export default function NavBar() {
   const t = NAV_TEXT[lang];
 
   return (
-    <nav
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "20px 32px",
-        borderBottom: "1px solid #222",
-        background: "#0b0b0f",
-      }}
-    >
-      <Link
-        href="/"
-        style={{
-          color: "white",
-          textDecoration: "none",
-          fontWeight: 700,
-          fontSize: 22,
-        }}
-      >
-        PocketGPT
-      </Link>
-
-      <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            border: "1px solid #27272a",
-            borderRadius: 999,
-            overflow: "hidden",
-            marginRight: 8,
-          }}
+    <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b0f]/95 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <Link
+          href="/"
+          className="shrink-0 text-xl font-bold tracking-tight text-white sm:text-2xl"
+          onClick={() => setMenuOpen(false)}
         >
-          <button
-            onClick={() => changeLang("ru")}
-            style={{
-              background: lang === "ru" ? "#2563eb" : "transparent",
-              color: "white",
-              border: "none",
-              padding: "8px 12px",
-              cursor: "pointer",
-            }}
-          >
-            RU
-          </button>
-
-          <button
-            onClick={() => changeLang("en")}
-            style={{
-              background: lang === "en" ? "#2563eb" : "transparent",
-              color: "white",
-              border: "none",
-              padding: "8px 12px",
-              cursor: "pointer",
-            }}
-          >
-            ENG
-          </button>
-        </div>
-
-        <Link href="/" style={{ color: "white", textDecoration: "none" }}>
-          {t.home}
+          PocketGPT
         </Link>
 
-        {ready && isAuthed ? (
-          <>
-            <Link href="/dashboard" style={{ color: "white", textDecoration: "none" }}>
-              {t.dashboard}
-            </Link>
-
-            <Link href="/pair" style={{ color: "white", textDecoration: "none" }}>
-              {t.pair}
-            </Link>
-
-            <Link href="/billing" style={{ color: "white", textDecoration: "none" }}>
-              {t.billing}
-            </Link>
-
+        <div className="hidden items-center gap-3 md:flex">
+          <div className="flex items-center overflow-hidden rounded-full border border-zinc-800">
             <button
-              onClick={handleLogout}
-              style={{
-                background: "#2563eb",
-                color: "white",
-                border: "none",
-                borderRadius: 10,
-                padding: "10px 14px",
-                cursor: "pointer",
-              }}
+              onClick={() => changeLang("ru")}
+              className={`px-3 py-2 text-sm font-medium transition ${
+                lang === "ru" ? "bg-blue-600 text-white" : "text-white hover:bg-white/5"
+              }`}
+              type="button"
             >
-              {t.logout}
+              RU
             </button>
-          </>
-        ) : null}
+            <button
+              onClick={() => changeLang("en")}
+              className={`px-3 py-2 text-sm font-medium transition ${
+                lang === "en" ? "bg-blue-600 text-white" : "text-white hover:bg-white/5"
+              }`}
+              type="button"
+            >
+              ENG
+            </button>
+          </div>
 
-        {ready && !isAuthed ? (
-          <>
-            <Link href="/login" style={{ color: "white", textDecoration: "none" }}>
-              {t.login}
-            </Link>
-            <Link href="/signup" style={{ color: "white", textDecoration: "none" }}>
-              {t.signup}
-            </Link>
-          </>
-        ) : null}
+          <Link href="/" className="text-sm text-white/90 transition hover:text-white">
+            {t.home}
+          </Link>
+
+          {ready && isAuthed ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="text-sm text-white/90 transition hover:text-white"
+              >
+                {t.dashboard}
+              </Link>
+
+              <Link href="/pair" className="text-sm text-white/90 transition hover:text-white">
+                {t.pair}
+              </Link>
+
+              <Link
+                href="/billing"
+                className="text-sm text-white/90 transition hover:text-white"
+              >
+                {t.billing}
+              </Link>
+
+              <button
+                onClick={handleLogout}
+                type="button"
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+              >
+                {t.logout}
+              </button>
+            </>
+          ) : null}
+
+          {ready && !isAuthed ? (
+            <>
+              <Link
+                href="/login"
+                className="text-sm text-white/90 transition hover:text-white"
+              >
+                {t.login}
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+              >
+                {t.signup}
+              </Link>
+            </>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          className="rounded-xl border border-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/5 md:hidden"
+          aria-expanded={menuOpen}
+          aria-label={menuOpen ? t.close : t.menu}
+        >
+          {menuOpen ? "✕" : "☰"}
+        </button>
       </div>
+
+      {menuOpen ? (
+        <div className="border-t border-white/10 bg-[#0b0b0f] md:hidden">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6">
+            <div className="flex w-full items-center overflow-hidden rounded-full border border-zinc-800">
+              <button
+                onClick={() => changeLang("ru")}
+                className={`flex-1 px-3 py-2 text-sm font-medium transition ${
+                  lang === "ru" ? "bg-blue-600 text-white" : "text-white hover:bg-white/5"
+                }`}
+                type="button"
+              >
+                RU
+              </button>
+              <button
+                onClick={() => changeLang("en")}
+                className={`flex-1 px-3 py-2 text-sm font-medium transition ${
+                  lang === "en" ? "bg-blue-600 text-white" : "text-white hover:bg-white/5"
+                }`}
+                type="button"
+              >
+                ENG
+              </button>
+            </div>
+
+            <Link
+              href="/"
+              className="rounded-xl px-3 py-3 text-white/90 transition hover:bg-white/5 hover:text-white"
+              onClick={() => setMenuOpen(false)}
+            >
+              {t.home}
+            </Link>
+
+            {ready && isAuthed ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="rounded-xl px-3 py-3 text-white/90 transition hover:bg-white/5 hover:text-white"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {t.dashboard}
+                </Link>
+
+                <Link
+                  href="/pair"
+                  className="rounded-xl px-3 py-3 text-white/90 transition hover:bg-white/5 hover:text-white"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {t.pair}
+                </Link>
+
+                <Link
+                  href="/billing"
+                  className="rounded-xl px-3 py-3 text-white/90 transition hover:bg-white/5 hover:text-white"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {t.billing}
+                </Link>
+
+                <button
+                  onClick={handleLogout}
+                  type="button"
+                  className="mt-1 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+                >
+                  {t.logout}
+                </button>
+              </>
+            ) : null}
+
+            {ready && !isAuthed ? (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-xl px-3 py-3 text-white/90 transition hover:bg-white/5 hover:text-white"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {t.login}
+                </Link>
+
+                <Link
+                  href="/signup"
+                  className="w-full rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-500"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {t.signup}
+                </Link>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </nav>
   );
 }

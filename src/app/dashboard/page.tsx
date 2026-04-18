@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getToken, getUser } from "@/lib/auth";
@@ -161,7 +162,7 @@ const TEXT = {
     openBilling: "Open billing",
     unlimited: "unlimited",
   },
-};
+} as const;
 
 function getLang(): Lang {
   if (typeof window === "undefined") return "ru";
@@ -181,9 +182,9 @@ function getAccessBadge(hasAccess: boolean, lang: Lang) {
 
   return {
     text: hasAccess ? t.active : t.inactive,
-    background: hasAccess ? "#0f2f1d" : "#3a1a1a",
-    color: hasAccess ? "#86efac" : "#fca5a5",
-    border: hasAccess ? "1px solid #14532d" : "1px solid #7f1d1d",
+    classes: hasAccess
+      ? "border border-green-800 bg-green-950/40 text-green-300"
+      : "border border-red-800 bg-red-950/40 text-red-300",
   };
 }
 
@@ -247,144 +248,79 @@ export default function DashboardPage() {
 
   if (!ready) {
     return (
-      <main
-        style={{
-          minHeight: "calc(100vh - 80px)",
-          background: "#050816",
-          color: "white",
-          padding: 32,
-        }}
-      >
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>{t.loading}</div>
+      <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-6 text-white sm:px-6 sm:py-10">
+        <div className="mx-auto max-w-6xl">{t.loading}</div>
       </main>
     );
   }
 
   return (
-    <main
-      style={{
-        minHeight: "calc(100vh - 80px)",
-        background: "#050816",
-        color: "white",
-        padding: 32,
-      }}
-    >
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div
-          style={{
-            background: "#111827",
-            border: "1px solid #1f2937",
-            borderRadius: 20,
-            padding: 24,
-            marginBottom: 20,
-          }}
-        >
-          <h1 style={{ marginTop: 0, marginBottom: 8 }}>{t.dashboard}</h1>
-          <p style={{ color: "#a1a1aa", marginTop: 0 }}>{t.subtitle}</p>
+    <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-6 text-white sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-6xl">
+        <section className="mb-5 rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
+          <h1 className="mb-2 text-3xl font-bold">{t.dashboard}</h1>
+          <p className="text-sm text-[#a1a1aa] sm:text-base">{t.subtitle}</p>
 
-          <div style={{ color: "#d4d4d8", marginTop: 12, lineHeight: 1.8 }}>
-            <div>
+          <div className="mt-4 space-y-2 text-sm leading-7 text-[#d4d4d8] sm:text-base">
+            <div className="break-words">
               {t.email}: {user?.email || "—"}
             </div>
-            <div>
+            <div className="break-all">
               {t.userId}: {user?.id || "—"}
             </div>
           </div>
 
-          <a
+          <Link
             href="/billing"
-            style={{
-              display: "inline-block",
-              marginTop: 16,
-              background: "#2563eb",
-              color: "white",
-              textDecoration: "none",
-              padding: "10px 14px",
-              borderRadius: 12,
-              fontWeight: 600,
-            }}
+            className="mt-5 inline-flex rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500"
           >
             {t.openBilling}
-          </a>
-        </div>
+          </Link>
+        </section>
 
-        <div
-          style={{
-            background: "#111827",
-            border: "1px solid #1f2937",
-            borderRadius: 20,
-            padding: 24,
-            marginBottom: 20,
-          }}
-        >
-          <h2 style={{ marginTop: 0, marginBottom: 12 }}>{t.myDevices}</h2>
+        <section className="mb-5 rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
+          <h2 className="mb-4 text-2xl font-semibold">{t.myDevices}</h2>
 
-          {loading ? <div style={{ color: "#a1a1aa" }}>{t.loading}</div> : null}
+          {loading ? <div className="text-[#a1a1aa]">{t.loading}</div> : null}
 
           {errorText ? (
-            <div
-              style={{
-                background: "#3f1d1d",
-                color: "#fecaca",
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid #7f1d1d",
-              }}
-            >
+            <div className="rounded-xl border border-[#7f1d1d] bg-[#3f1d1d] p-3 text-sm text-[#fecaca]">
               {errorText}
             </div>
           ) : null}
 
           {!loading && !errorText && devices.length === 0 ? (
-            <div style={{ color: "#a1a1aa" }}>{t.noDevices}</div>
+            <div className="text-[#a1a1aa]">{t.noDevices}</div>
           ) : null}
 
-          <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
+          <div className="mt-4 grid gap-4">
             {devices.map((item) => {
               const badge = getAccessBadge(item.status.hasAccess, lang);
 
               return (
-                <div
+                <article
                   key={item.device.id}
-                  style={{
-                    background: "#0b1220",
-                    border: "1px solid #1f2937",
-                    borderRadius: 18,
-                    padding: 18,
-                  }}
+                  className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4 sm:p-5"
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      gap: 16,
-                      flexWrap: "wrap",
-                      marginBottom: 12,
-                    }}
-                  >
-                    <div>
-                      <h3 style={{ marginTop: 0, marginBottom: 8 }}>{item.device.name}</h3>
-                      <div style={{ color: "#94a3b8", fontSize: 14 }}>
+                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <h3 className="mb-2 break-words text-xl font-semibold sm:text-2xl">
+                        {item.device.name}
+                      </h3>
+                      <div className="break-all text-sm text-slate-400">
                         UID: {item.device.uid}
                       </div>
                     </div>
 
                     <div
-                      style={{
-                        ...badge,
-                        borderRadius: 999,
-                        padding: "8px 12px",
-                        fontSize: 14,
-                        fontWeight: 600,
-                      }}
+                      className={`inline-flex w-fit rounded-full px-3 py-2 text-sm font-semibold ${badge.classes}`}
                     >
                       {badge.text}
                     </div>
                   </div>
 
-                  <div style={{ color: "#d1d5db", lineHeight: 1.8 }}>
-                    <div>
+                  <div className="grid gap-3 text-sm leading-7 text-gray-300 sm:grid-cols-2 sm:text-base">
+                    <div className="break-all">
                       {t.deviceId}: {item.device.id}
                     </div>
                     <div>
@@ -393,17 +329,12 @@ export default function DashboardPage() {
                     <div>
                       {t.created}: {formatDate(item.device.createdAt, lang)}
                     </div>
+                    <div>
+                      {t.currentPlan}: {item.subscription.plan?.name || "—"}
+                    </div>
                   </div>
 
-                  <div
-                    style={{
-                      marginTop: 16,
-                      paddingTop: 16,
-                      borderTop: "1px solid #1f2937",
-                      color: "#d1d5db",
-                      lineHeight: 1.8,
-                    }}
-                  >
+                  <div className="mt-4 border-t border-[#1f2937] pt-4 text-sm leading-7 text-gray-300 sm:text-base">
                     <div>
                       {t.trial}:{" "}
                       {item.trial.exists
@@ -426,10 +357,6 @@ export default function DashboardPage() {
                     </div>
 
                     <div>
-                      {t.currentPlan}: {item.subscription.plan?.name || "—"}
-                    </div>
-
-                    <div>
                       {t.requestLimit}: {formatRequestLimit(item.usage.requestLimit, lang)}
                     </div>
                     <div>
@@ -438,8 +365,9 @@ export default function DashboardPage() {
                     <div>
                       {t.remainingRequests}: {item.usage.remainingRequests ?? "—"}
                     </div>
-                    <div>
-                      {t.period}: {formatDate(item.usage.periodStartedAt, lang)} — {formatDate(item.usage.periodEndsAt, lang)}
+                    <div className="break-words">
+                      {t.period}: {formatDate(item.usage.periodStartedAt, lang)} —{" "}
+                      {formatDate(item.usage.periodEndsAt, lang)}
                     </div>
 
                     {item.subscription.plan ? (
@@ -449,68 +377,43 @@ export default function DashboardPage() {
                       </div>
                     ) : null}
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
-        </div>
+        </section>
 
-        <div
-          style={{
-            background: "#111827",
-            border: "1px solid #1f2937",
-            borderRadius: 20,
-            padding: 24,
-          }}
-        >
-          <h2 style={{ marginTop: 0, marginBottom: 12 }}>{t.paymentHistory}</h2>
+        <section className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
+          <h2 className="mb-4 text-2xl font-semibold">{t.paymentHistory}</h2>
 
-          {loading ? <div style={{ color: "#a1a1aa" }}>{t.loading}</div> : null}
+          {loading ? <div className="text-[#a1a1aa]">{t.loading}</div> : null}
 
           {!loading && !errorText && payments.length === 0 ? (
-            <div style={{ color: "#a1a1aa" }}>{t.noPayments}</div>
+            <div className="text-[#a1a1aa]">{t.noPayments}</div>
           ) : null}
 
-          <div style={{ display: "grid", gap: 12 }}>
+          <div className="grid gap-3">
             {payments.map((payment) => (
-              <div
+              <article
                 key={payment.id}
-                style={{
-                  background: "#0b1220",
-                  border: "1px solid #1f2937",
-                  borderRadius: 16,
-                  padding: 16,
-                }}
+                className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4"
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 16,
-                    flexWrap: "wrap",
-                    marginBottom: 8,
-                  }}
-                >
-                  <div style={{ fontWeight: 700 }}>
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                  <div className="break-words font-semibold">
                     {payment.plan?.name || "Plan"} — {payment.amountKzt} {payment.currency}
                   </div>
-                  <div style={{ color: "#86efac" }}>{payment.status}</div>
+                  <div className="text-green-300">{payment.status}</div>
                 </div>
-                <div style={{ color: "#cbd5e1", lineHeight: 1.8 }}>
-                  <div>
-                    {t.provider}: {payment.provider}
-                  </div>
-                  <div>
-                    {t.amount}: {payment.amountKzt} {payment.currency}
-                  </div>
-                  <div>
-                    {t.paidAt}: {formatDate(payment.createdAt, lang)}
-                  </div>
+
+                <div className="space-y-1 text-sm leading-7 text-slate-300">
+                  <div>{t.provider}: {payment.provider}</div>
+                  <div>{t.amount}: {payment.amountKzt} {payment.currency}</div>
+                  <div>{t.paidAt}: {formatDate(payment.createdAt, lang)}</div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
-        </div>
+        </section>
       </div>
     </main>
   );
