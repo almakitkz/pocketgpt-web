@@ -1,39 +1,36 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { saveAuth } from "@/lib/auth";
 
 type Lang = "ru" | "en";
 
 const TEXT = {
   ru: {
     title: "Вход",
-    subtitle: "Войди в аккаунт PocketGPT.",
+    subtitle: "Войди в PocketGPT, чтобы управлять устройствами, подпиской и аккаунтом.",
     emailPlaceholder: "Email",
     passwordPlaceholder: "Пароль",
     submit: "Войти",
-    loading: "Вход...",
+    loading: "Входим...",
     fallbackError: "Ошибка входа",
     signupHint: "Нет аккаунта?",
     signupLink: "Создать аккаунт",
-    verifyEmail: "Подтвердить email",
-    emailNotVerifiedHint: "Похоже, твой email ещё не подтверждён. Перейди к подтверждению.",
+    forgotLink: "Забыли пароль?",
     show: "Показать пароль",
     hide: "Скрыть пароль",
   },
   en: {
     title: "Login",
-    subtitle: "Log in to your PocketGPT account.",
+    subtitle: "Log in to PocketGPT to manage your devices, billing, and account.",
     emailPlaceholder: "Email",
     passwordPlaceholder: "Password",
     submit: "Log in",
     loading: "Logging in...",
     fallbackError: "Login failed",
-    signupHint: "No account yet?",
+    signupHint: "Don’t have an account?",
     signupLink: "Create account",
-    verifyEmail: "Verify email",
-    emailNotVerifiedHint: "Your email is not verified yet. Continue to verification.",
+    forgotLink: "Forgot password?",
     show: "Show password",
     hide: "Hide password",
   },
@@ -42,6 +39,53 @@ const TEXT = {
 function getLang(): Lang {
   if (typeof window === "undefined") return "ru";
   return localStorage.getItem("site_lang") === "en" ? "en" : "ru";
+}
+
+function saveAuthFallback(token: string, user: unknown) {
+  const userJson = JSON.stringify(user ?? null);
+  const tokenKeys = [
+    "authToken",
+    "token",
+    "jwt",
+    "pocketgpt_token",
+    "pocketgpt_auth_token",
+  ];
+  const userKeys = [
+    "authUser",
+    "user",
+    "pocketgpt_user",
+  ];
+
+  for (const key of tokenKeys) {
+    localStorage.setItem(key, token);
+  }
+  for (const key of userKeys) {
+    localStorage.setItem(key, userJson);
+  }
+  window.dispatchEvent(new Event("storage"));
+}
+
+function EyeButton({
+  shown,
+  onClick,
+  labelShow,
+  labelHide,
+}: {
+  shown: boolean;
+  onClick: () => void;
+  labelShow: string;
+  labelHide: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={shown ? labelHide : labelShow}
+      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-sm text-white/60 transition hover:bg-white/5 hover:text-white"
+    >
+      {shown ? "🙈" : "👁"}
+    </button>
+  );
 }
 
 export default function LoginPage() {
@@ -61,10 +105,14 @@ export default function LoginPage() {
     return () => window.removeEventListener("site-language-change", updateLang);
   }, []);
 
-  const emailNotVerified = useMemo(() => {
-    const v = errorText.toLowerCase();
-    return v.includes("email") && (v.includes("подтверж") || v.includes("not verified"));
-  }, [errorText]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const emailFromQuery = params.get("email");
+    if (emailFromQuery) {
+      setEmail(emailFromQuery.trim().toLowerCase());
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,7 +125,11 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password, lang }),
       });
 
-      saveAuth(data.auth.token, data.user);
+      const token = data?.auth?.token;
+      if (typeof token === "string" && token) {
+        saveAuthFallback(token, data?.user ?? null);
+      }
+
       window.location.href = "/dashboard";
     } catch (err) {
       setErrorText(err instanceof Error ? err.message : t.fallbackError);
@@ -113,31 +165,17 @@ export default function LoginPage() {
               autoComplete="current-password"
               className="w-full min-w-0 rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 pr-14 text-white outline-none placeholder:text-white/45"
             />
-            <button
-              type="button"
+            <EyeButton
+              shown={showPassword}
               onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? t.hide : t.show}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-sm text-white/60 transition hover:bg-white/5 hover:text-white"
-            >
-              {showPassword ? "🙈" : "👁"}
-            </button>
+              labelShow={t.show}
+              labelHide={t.hide}
+            />
           </div>
 
           {errorText ? (
             <div className="break-anywhere rounded-xl border border-[#7f1d1d] bg-[#3f1d1d] p-3 text-sm text-[#fecaca]">
               {errorText}
-            </div>
-          ) : null}
-
-          {emailNotVerified ? (
-            <div className="rounded-xl border border-blue-800 bg-blue-950/40 p-3 text-sm text-blue-300">
-              <div>{t.emailNotVerifiedHint}</div>
-              <a
-                href={`/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`}
-                className="mt-2 inline-block text-blue-200 no-underline hover:text-white"
-              >
-                {t.verifyEmail}
-              </a>
             </div>
           ) : null}
 
@@ -150,10 +188,15 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-5 text-sm text-[#a1a1aa]">
-          {t.signupHint}{" "}
-          <a href="/signup" className="text-[#60a5fa] no-underline hover:text-blue-300">
-            {t.signupLink}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#a1a1aa]">
+          <div>
+            {t.signupHint}{" "}
+            <a href="/signup" className="text-[#60a5fa] no-underline hover:text-blue-300">
+              {t.signupLink}
+            </a>
+          </div>
+          <a href={`/forgot-password${email ? `?email=${encodeURIComponent(email.trim())}` : ""}`} className="text-[#60a5fa] no-underline hover:text-blue-300">
+            {t.forgotLink}
           </a>
         </div>
       </div>
