@@ -19,7 +19,7 @@ const TEXT = {
     signup: "Create account",
     login: "Log in",
   },
-};
+} as const;
 
 function getSavedLang(): Lang {
   if (typeof window === "undefined") return "ru";
@@ -45,59 +45,27 @@ export default function Home() {
   }, []);
 
   return (
-    <main
-      style={{
-        minHeight: "calc(100vh - 80px)",
-        background: "#050816",
-        color: "white",
-        padding: "48px 32px",
-      }}
-    >
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 56, marginBottom: 16 }}>{t.title}</h1>
+    <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-8 text-white sm:px-6 sm:py-12">
+      <div className="mx-auto w-full max-w-6xl">
+        <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+          {t.title}
+        </h1>
 
-        <p
-          style={{
-            fontSize: 20,
-            color: "#a1a1aa",
-            maxWidth: 760,
-            lineHeight: 1.6,
-          }}
-        >
+        <p className="max-w-3xl text-base leading-7 text-[#a1a1aa] sm:text-lg sm:leading-8">
           {t.description}
         </p>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            marginTop: 28,
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="mt-7 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
           <a
             href="/signup"
-            style={{
-              background: "#2563eb",
-              color: "white",
-              textDecoration: "none",
-              padding: "12px 18px",
-              borderRadius: 12,
-            }}
+            className="inline-flex w-full justify-center rounded-xl bg-blue-600 px-5 py-3 text-center text-white no-underline hover:bg-blue-500 sm:w-auto"
           >
             {t.signup}
           </a>
 
           <a
             href="/login"
-            style={{
-              background: "#18181b",
-              color: "white",
-              textDecoration: "none",
-              padding: "12px 18px",
-              borderRadius: 12,
-              border: "1px solid #27272a",
-            }}
+            className="inline-flex w-full justify-center rounded-xl border border-[#27272a] bg-[#18181b] px-5 py-3 text-center text-white no-underline hover:bg-[#23232a] sm:w-auto"
           >
             {t.login}
           </a>

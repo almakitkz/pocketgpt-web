@@ -321,7 +321,10 @@ function buildErrorMessage(
   return fallback;
 }
 
-function formatRequestLimit(value: number | null | undefined, t: (typeof TEXT)[Lang]) {
+function formatRequestLimit(
+  value: number | null | undefined,
+  t: (typeof TEXT)[Lang]
+) {
   if (value === null || value === undefined || value <= 0) return t.unlimited;
   return `${value} ${t.requests}`;
 }
@@ -529,7 +532,7 @@ export default function BillingPage() {
 
       {message ? (
         <div
-          className={`mb-5 rounded-2xl border p-4 sm:mb-6 ${
+          className={`mb-5 break-anywhere rounded-2xl border p-4 sm:mb-6 ${
             messageType === "success"
               ? "border-green-700/50 bg-green-950/30 text-green-300"
               : messageType === "error"
@@ -541,7 +544,7 @@ export default function BillingPage() {
         </div>
       ) : null}
 
-      <div className="mb-5 flex justify-stretch sm:mb-6 sm:justify-end">
+      <div className="mb-5 flex sm:mb-6 sm:justify-end">
         <button
           onClick={() => void refreshAll()}
           className="w-full rounded-xl border border-blue-700/50 bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-500 sm:w-auto sm:py-2"
@@ -551,7 +554,7 @@ export default function BillingPage() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
-        <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
+        <section className="min-w-0 rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
           <h2 className="mb-4 text-xl font-semibold sm:text-2xl">{t.myDevices}</h2>
 
           {loadingDevices ? (
@@ -562,23 +565,27 @@ export default function BillingPage() {
             <div className="space-y-4">
               {devices.map((item) => {
                 const isSelected = item.device.id === selectedDeviceId;
+
                 return (
                   <button
                     key={item.device.id}
                     type="button"
                     onClick={() => setSelectedDeviceId(item.device.id)}
-                    className={`w-full rounded-2xl border p-4 text-left transition sm:p-5 ${
+                    className={`w-full min-w-0 rounded-2xl border p-4 text-left transition sm:p-5 ${
                       isSelected
                         ? "border-blue-500 bg-blue-950/30"
                         : "border-blue-900/40 bg-[#07101f] hover:border-blue-700/60"
                     }`}
                   >
-                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0 text-xl font-semibold break-words sm:text-2xl">
-                        {item.device.name}
+                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="break-anywhere text-xl font-semibold sm:text-2xl">
+                          {item.device.name}
+                        </div>
                       </div>
+
                       <div
-                        className={`inline-flex w-fit rounded-full px-3 py-1 text-sm font-medium ${
+                        className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${
                           item.status.hasAccess
                             ? "bg-green-900/40 text-green-300"
                             : "bg-red-900/40 text-red-300"
@@ -588,18 +595,18 @@ export default function BillingPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-1 break-words text-sm text-white/85 sm:text-base">
-                      <div className="break-all">UID: {item.device.uid}</div>
+                    <div className="space-y-1 text-sm text-white/85 sm:text-base">
+                      <div className="break-anywhere">UID: {item.device.uid}</div>
                       <div>
                         {t.paired}: {item.status.isPaired ? t.yes : t.no}
                       </div>
                       <div>
                         {t.accessNow}: {item.status.hasAccess ? t.yes : t.no}
                       </div>
-                      <div>
+                      <div className="break-anywhere">
                         {t.trial}: {trialText(item)}
                       </div>
-                      <div>
+                      <div className="break-anywhere">
                         {t.subscription}: {subscriptionText(item)}
                       </div>
                       <div>
@@ -625,7 +632,7 @@ export default function BillingPage() {
           )}
         </section>
 
-        <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
+        <section className="min-w-0 rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
           <h2 className="mb-4 text-xl font-semibold sm:text-2xl">{t.plans}</h2>
 
           {loadingPlans ? (
@@ -636,20 +643,22 @@ export default function BillingPage() {
             <div className="space-y-4">
               {plans.map((plan) => {
                 const isSelected = plan.id === selectedPlanId;
+
                 return (
                   <button
                     key={plan.id}
                     type="button"
                     onClick={() => setSelectedPlanId(plan.id)}
-                    className={`w-full rounded-2xl border p-4 text-left transition sm:p-5 ${
+                    className={`w-full min-w-0 rounded-2xl border p-4 text-left transition sm:p-5 ${
                       isSelected
                         ? "border-blue-500 bg-blue-950/30"
                         : "border-blue-900/40 bg-[#07101f] hover:border-blue-700/60"
                     }`}
                   >
-                    <div className="mb-2 break-words text-xl font-semibold sm:text-2xl">
+                    <div className="mb-2 break-anywhere text-xl font-semibold sm:text-2xl">
                       {plan.name}
                     </div>
+
                     <div className="space-y-1 text-sm text-white/85 sm:text-base">
                       <div>
                         {t.price}: {plan.priceKzt} KZT
@@ -673,16 +682,16 @@ export default function BillingPage() {
             </div>
           )}
 
-          <div className="mt-6 rounded-2xl border border-blue-900/40 bg-[#07101f] p-4 sm:p-5">
+          <div className="mt-6 min-w-0 rounded-2xl border border-blue-900/40 bg-[#07101f] p-4 sm:p-5">
             <div className="mb-2 text-base font-semibold sm:text-lg">{t.selectedDevice}</div>
-            <div className="mb-4 break-words text-sm text-white/80 sm:text-base">
+            <div className="mb-4 break-anywhere text-sm text-white/80 sm:text-base">
               {selectedDevice
                 ? `${selectedDevice.device.name} (${selectedDevice.device.uid})`
                 : t.chooseDevice}
             </div>
 
             <div className="mb-2 text-base font-semibold sm:text-lg">{t.selectedPlan}</div>
-            <div className="mb-4 break-words text-sm text-white/80 sm:text-base">
+            <div className="mb-4 break-anywhere text-sm text-white/80 sm:text-base">
               {selectedPlan
                 ? `${selectedPlan.name} — ${selectedPlan.priceKzt} KZT / ${selectedPlan.durationDays} ${t.days}`
                 : t.choosePlan}
@@ -690,7 +699,7 @@ export default function BillingPage() {
 
             {selectedDevice ? (
               <div className="mb-4 space-y-1 text-sm text-white/70">
-                <div>
+                <div className="break-anywhere">
                   {t.currentPlan}: {selectedDevice.subscription.plan?.name || t.inactive}
                 </div>
                 <div>
@@ -703,11 +712,11 @@ export default function BillingPage() {
             <div className="mb-3 text-sm text-white/70 sm:text-base">{t.paymentHint}</div>
 
             {!PAYPAL_CLIENT_ID ? (
-              <div className="rounded-xl border border-red-700/40 bg-red-950/30 p-4 text-sm text-red-300 sm:text-base">
+              <div className="break-anywhere rounded-xl border border-red-700/40 bg-red-950/30 p-4 text-sm text-red-300 sm:text-base">
                 {t.paypalNotReady}
               </div>
             ) : (
-              <div>
+              <div className="min-w-0">
                 <div className="mb-3 text-sm text-green-400 sm:text-base">{t.paypalReady}</div>
 
                 <PayPalScriptProvider
@@ -718,7 +727,7 @@ export default function BillingPage() {
                     components: "buttons",
                   }}
                 >
-                  <div className="[&_.paypal-buttons]:w-full">
+                  <div className="min-w-0">
                     <PayPalButtons
                       key={`${selectedDeviceId}-${selectedPlanId}`}
                       style={{
@@ -797,6 +806,7 @@ export default function BillingPage() {
                             loadDevices(token),
                             loadPayments(token, selectedDevice.device.id),
                           ]);
+
                           setMessageType("success");
                           setMessage(t.paymentSuccess);
                         } catch (error) {
@@ -841,27 +851,28 @@ export default function BillingPage() {
             {payments.map((payment) => (
               <div
                 key={payment.id}
-                className="rounded-2xl border border-blue-900/40 bg-[#07101f] p-4"
+                className="min-w-0 rounded-2xl border border-blue-900/40 bg-[#07101f] p-4"
               >
-                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-                  <div className="break-words text-base font-semibold sm:text-lg">
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                  <div className="break-anywhere text-base font-semibold sm:text-lg">
                     {payment.plan?.name || "Plan"} — {payment.amountKzt} KZT
                   </div>
-                  <div className="inline-flex w-fit rounded-full bg-green-900/30 px-3 py-1 text-sm text-green-300">
+                  <div className="w-fit rounded-full bg-green-900/30 px-3 py-1 text-sm text-green-300">
                     {payment.status}
                   </div>
                 </div>
-                <div className="space-y-1 break-words text-sm text-white/75">
-                  <div>
+
+                <div className="space-y-1 text-sm text-white/75">
+                  <div className="break-anywhere">
                     {t.provider}: {payment.provider}
                   </div>
-                  <div>
+                  <div className="break-anywhere">
                     {t.device}: {payment.device?.name || "—"}
                   </div>
                   <div>
                     {t.amount}: {payment.amountKzt} {payment.currency}
                   </div>
-                  <div>
+                  <div className="break-anywhere">
                     {t.createdAt}: {formatDate(payment.createdAt, lang)}
                   </div>
                 </div>

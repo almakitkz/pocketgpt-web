@@ -50,9 +50,14 @@ export default function NavBar() {
   }, []);
 
   useEffect(() => {
-    const closeMenu = () => setMenuOpen(false);
-    window.addEventListener("resize", closeMenu);
-    return () => window.removeEventListener("resize", closeMenu);
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   function handleLogout() {
@@ -70,65 +75,59 @@ export default function NavBar() {
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b0f]/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
         <Link
           href="/"
-          className="shrink-0 text-xl font-bold tracking-tight text-white sm:text-2xl"
+          className="min-w-0 shrink text-lg font-bold tracking-tight text-white sm:text-xl"
           onClick={() => setMenuOpen(false)}
         >
           PocketGPT
         </Link>
 
-        <div className="hidden items-center gap-3 md:flex">
-          <div className="flex items-center overflow-hidden rounded-full border border-zinc-800">
+        <div className="hidden min-w-0 items-center gap-3 md:flex">
+          <div className="flex overflow-hidden rounded-full border border-zinc-800">
             <button
+              type="button"
               onClick={() => changeLang("ru")}
-              className={`px-3 py-2 text-sm font-medium transition ${
+              className={`px-3 py-2 text-sm ${
                 lang === "ru" ? "bg-blue-600 text-white" : "text-white hover:bg-white/5"
               }`}
-              type="button"
             >
               RU
             </button>
             <button
+              type="button"
               onClick={() => changeLang("en")}
-              className={`px-3 py-2 text-sm font-medium transition ${
+              className={`px-3 py-2 text-sm ${
                 lang === "en" ? "bg-blue-600 text-white" : "text-white hover:bg-white/5"
               }`}
-              type="button"
             >
               ENG
             </button>
           </div>
 
-          <Link href="/" className="text-sm text-white/90 transition hover:text-white">
+          <Link href="/" className="text-sm text-white/90 hover:text-white">
             {t.home}
           </Link>
 
           {ready && isAuthed ? (
             <>
-              <Link
-                href="/dashboard"
-                className="text-sm text-white/90 transition hover:text-white"
-              >
+              <Link href="/dashboard" className="text-sm text-white/90 hover:text-white">
                 {t.dashboard}
               </Link>
 
-              <Link href="/pair" className="text-sm text-white/90 transition hover:text-white">
+              <Link href="/pair" className="text-sm text-white/90 hover:text-white">
                 {t.pair}
               </Link>
 
-              <Link
-                href="/billing"
-                className="text-sm text-white/90 transition hover:text-white"
-              >
+              <Link href="/billing" className="text-sm text-white/90 hover:text-white">
                 {t.billing}
               </Link>
 
               <button
-                onClick={handleLogout}
                 type="button"
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+                onClick={handleLogout}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
               >
                 {t.logout}
               </button>
@@ -137,15 +136,13 @@ export default function NavBar() {
 
           {ready && !isAuthed ? (
             <>
-              <Link
-                href="/login"
-                className="text-sm text-white/90 transition hover:text-white"
-              >
+              <Link href="/login" className="text-sm text-white/90 hover:text-white">
                 {t.login}
               </Link>
+
               <Link
                 href="/signup"
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
               >
                 {t.signup}
               </Link>
@@ -155,10 +152,10 @@ export default function NavBar() {
 
         <button
           type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          className="rounded-xl border border-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/5 md:hidden"
-          aria-expanded={menuOpen}
           aria-label={menuOpen ? t.close : t.menu}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+          className="rounded-xl border border-white/10 px-3 py-2 text-sm text-white md:hidden"
         >
           {menuOpen ? "✕" : "☰"}
         </button>
@@ -167,22 +164,22 @@ export default function NavBar() {
       {menuOpen ? (
         <div className="border-t border-white/10 bg-[#0b0b0f] md:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6">
-            <div className="flex w-full items-center overflow-hidden rounded-full border border-zinc-800">
+            <div className="flex w-full overflow-hidden rounded-full border border-zinc-800">
               <button
+                type="button"
                 onClick={() => changeLang("ru")}
-                className={`flex-1 px-3 py-2 text-sm font-medium transition ${
+                className={`flex-1 px-3 py-2 text-sm ${
                   lang === "ru" ? "bg-blue-600 text-white" : "text-white hover:bg-white/5"
                 }`}
-                type="button"
               >
                 RU
               </button>
               <button
+                type="button"
                 onClick={() => changeLang("en")}
-                className={`flex-1 px-3 py-2 text-sm font-medium transition ${
+                className={`flex-1 px-3 py-2 text-sm ${
                   lang === "en" ? "bg-blue-600 text-white" : "text-white hover:bg-white/5"
                 }`}
-                type="button"
               >
                 ENG
               </button>
@@ -190,7 +187,7 @@ export default function NavBar() {
 
             <Link
               href="/"
-              className="rounded-xl px-3 py-3 text-white/90 transition hover:bg-white/5 hover:text-white"
+              className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white"
               onClick={() => setMenuOpen(false)}
             >
               {t.home}
@@ -200,7 +197,7 @@ export default function NavBar() {
               <>
                 <Link
                   href="/dashboard"
-                  className="rounded-xl px-3 py-3 text-white/90 transition hover:bg-white/5 hover:text-white"
+                  className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white"
                   onClick={() => setMenuOpen(false)}
                 >
                   {t.dashboard}
@@ -208,7 +205,7 @@ export default function NavBar() {
 
                 <Link
                   href="/pair"
-                  className="rounded-xl px-3 py-3 text-white/90 transition hover:bg-white/5 hover:text-white"
+                  className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white"
                   onClick={() => setMenuOpen(false)}
                 >
                   {t.pair}
@@ -216,16 +213,16 @@ export default function NavBar() {
 
                 <Link
                   href="/billing"
-                  className="rounded-xl px-3 py-3 text-white/90 transition hover:bg-white/5 hover:text-white"
+                  className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white"
                   onClick={() => setMenuOpen(false)}
                 >
                   {t.billing}
                 </Link>
 
                 <button
-                  onClick={handleLogout}
                   type="button"
-                  className="mt-1 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
+                  onClick={handleLogout}
+                  className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500"
                 >
                   {t.logout}
                 </button>
@@ -236,7 +233,7 @@ export default function NavBar() {
               <>
                 <Link
                   href="/login"
-                  className="rounded-xl px-3 py-3 text-white/90 transition hover:bg-white/5 hover:text-white"
+                  className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white"
                   onClick={() => setMenuOpen(false)}
                 >
                   {t.login}
@@ -244,7 +241,7 @@ export default function NavBar() {
 
                 <Link
                   href="/signup"
-                  className="w-full rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-500"
+                  className="w-full rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-blue-500"
                   onClick={() => setMenuOpen(false)}
                 >
                   {t.signup}

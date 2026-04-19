@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getToken, getUser } from "@/lib/auth";
@@ -182,9 +181,9 @@ function getAccessBadge(hasAccess: boolean, lang: Lang) {
 
   return {
     text: hasAccess ? t.active : t.inactive,
-    classes: hasAccess
-      ? "border border-green-800 bg-green-950/40 text-green-300"
-      : "border border-red-800 bg-red-950/40 text-red-300",
+    background: hasAccess ? "#0f2f1d" : "#3a1a1a",
+    color: hasAccess ? "#86efac" : "#fca5a5",
+    border: hasAccess ? "1px solid #14532d" : "1px solid #7f1d1d",
   };
 }
 
@@ -249,42 +248,42 @@ export default function DashboardPage() {
   if (!ready) {
     return (
       <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-6 text-white sm:px-6 sm:py-10">
-        <div className="mx-auto max-w-6xl">{t.loading}</div>
+        <div className="mx-auto max-w-[1100px]">{t.loading}</div>
       </main>
     );
   }
 
   return (
     <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-6 text-white sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-6xl">
-        <section className="mb-5 rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
+      <div className="mx-auto w-full max-w-[1100px]">
+        <div className="mb-5 rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
           <h1 className="mb-2 text-3xl font-bold">{t.dashboard}</h1>
-          <p className="text-sm text-[#a1a1aa] sm:text-base">{t.subtitle}</p>
+          <p className="mt-0 text-sm text-[#a1a1aa] sm:text-base">{t.subtitle}</p>
 
           <div className="mt-4 space-y-2 text-sm leading-7 text-[#d4d4d8] sm:text-base">
-            <div className="break-words">
+            <div className="break-anywhere">
               {t.email}: {user?.email || "—"}
             </div>
-            <div className="break-all">
+            <div className="break-anywhere">
               {t.userId}: {user?.id || "—"}
             </div>
           </div>
 
-          <Link
+          <a
             href="/billing"
-            className="mt-5 inline-flex rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500"
+            className="mt-4 inline-flex w-full justify-center rounded-xl bg-blue-600 px-4 py-3 text-center font-semibold text-white no-underline hover:bg-blue-500 sm:w-auto"
           >
             {t.openBilling}
-          </Link>
-        </section>
+          </a>
+        </div>
 
-        <section className="mb-5 rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-          <h2 className="mb-4 text-2xl font-semibold">{t.myDevices}</h2>
+        <div className="mb-5 rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
+          <h2 className="mb-3 text-2xl font-semibold">{t.myDevices}</h2>
 
           {loading ? <div className="text-[#a1a1aa]">{t.loading}</div> : null}
 
           {errorText ? (
-            <div className="rounded-xl border border-[#7f1d1d] bg-[#3f1d1d] p-3 text-sm text-[#fecaca]">
+            <div className="break-anywhere rounded-xl border border-[#7f1d1d] bg-[#3f1d1d] p-3 text-sm text-[#fecaca]">
               {errorText}
             </div>
           ) : null}
@@ -298,29 +297,34 @@ export default function DashboardPage() {
               const badge = getAccessBadge(item.status.hasAccess, lang);
 
               return (
-                <article
+                <div
                   key={item.device.id}
-                  className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4 sm:p-5"
+                  className="min-w-0 rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4 sm:p-[18px]"
                 >
-                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <h3 className="mb-2 break-words text-xl font-semibold sm:text-2xl">
+                      <h3 className="mb-2 break-anywhere text-xl font-semibold">
                         {item.device.name}
                       </h3>
-                      <div className="break-all text-sm text-slate-400">
+                      <div className="break-anywhere text-sm text-[#94a3b8]">
                         UID: {item.device.uid}
                       </div>
                     </div>
 
                     <div
-                      className={`inline-flex w-fit rounded-full px-3 py-2 text-sm font-semibold ${badge.classes}`}
+                      className="w-fit rounded-full px-3 py-2 text-sm font-semibold"
+                      style={{
+                        background: badge.background,
+                        color: badge.color,
+                        border: badge.border,
+                      }}
                     >
                       {badge.text}
                     </div>
                   </div>
 
-                  <div className="grid gap-3 text-sm leading-7 text-gray-300 sm:grid-cols-2 sm:text-base">
-                    <div className="break-all">
+                  <div className="space-y-1 text-sm leading-7 text-[#d1d5db] sm:text-base">
+                    <div className="break-anywhere">
                       {t.deviceId}: {item.device.id}
                     </div>
                     <div>
@@ -329,13 +333,10 @@ export default function DashboardPage() {
                     <div>
                       {t.created}: {formatDate(item.device.createdAt, lang)}
                     </div>
-                    <div>
-                      {t.currentPlan}: {item.subscription.plan?.name || "—"}
-                    </div>
                   </div>
 
-                  <div className="mt-4 border-t border-[#1f2937] pt-4 text-sm leading-7 text-gray-300 sm:text-base">
-                    <div>
+                  <div className="mt-4 border-t border-[#1f2937] pt-4 text-sm leading-7 text-[#d1d5db] sm:text-base">
+                    <div className="break-anywhere">
                       {t.trial}:{" "}
                       {item.trial.exists
                         ? item.trial.active
@@ -344,7 +345,7 @@ export default function DashboardPage() {
                         : t.notStarted}
                     </div>
 
-                    <div>
+                    <div className="break-anywhere">
                       {t.subscription}:{" "}
                       {item.subscription.active
                         ? `${item.subscription.plan?.name || "plan"} ${t.until} ${formatDate(
@@ -356,6 +357,10 @@ export default function DashboardPage() {
                         : t.inactiveSub}
                     </div>
 
+                    <div className="break-anywhere">
+                      {t.currentPlan}: {item.subscription.plan?.name || "—"}
+                    </div>
+
                     <div>
                       {t.requestLimit}: {formatRequestLimit(item.usage.requestLimit, lang)}
                     </div>
@@ -365,7 +370,7 @@ export default function DashboardPage() {
                     <div>
                       {t.remainingRequests}: {item.usage.remainingRequests ?? "—"}
                     </div>
-                    <div className="break-words">
+                    <div className="break-anywhere">
                       {t.period}: {formatDate(item.usage.periodStartedAt, lang)} —{" "}
                       {formatDate(item.usage.periodEndsAt, lang)}
                     </div>
@@ -377,14 +382,14 @@ export default function DashboardPage() {
                       </div>
                     ) : null}
                   </div>
-                </article>
+                </div>
               );
             })}
           </div>
-        </section>
+        </div>
 
-        <section className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-          <h2 className="mb-4 text-2xl font-semibold">{t.paymentHistory}</h2>
+        <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
+          <h2 className="mb-3 text-2xl font-semibold">{t.paymentHistory}</h2>
 
           {loading ? <div className="text-[#a1a1aa]">{t.loading}</div> : null}
 
@@ -394,26 +399,32 @@ export default function DashboardPage() {
 
           <div className="grid gap-3">
             {payments.map((payment) => (
-              <article
+              <div
                 key={payment.id}
-                className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4"
+                className="min-w-0 rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4"
               >
-                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                  <div className="break-words font-semibold">
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                  <div className="break-anywhere font-bold">
                     {payment.plan?.name || "Plan"} — {payment.amountKzt} {payment.currency}
                   </div>
-                  <div className="text-green-300">{payment.status}</div>
+                  <div className="break-anywhere text-[#86efac]">{payment.status}</div>
                 </div>
 
-                <div className="space-y-1 text-sm leading-7 text-slate-300">
-                  <div>{t.provider}: {payment.provider}</div>
-                  <div>{t.amount}: {payment.amountKzt} {payment.currency}</div>
-                  <div>{t.paidAt}: {formatDate(payment.createdAt, lang)}</div>
+                <div className="space-y-1 text-sm leading-7 text-[#cbd5e1] sm:text-base">
+                  <div className="break-anywhere">
+                    {t.provider}: {payment.provider}
+                  </div>
+                  <div>
+                    {t.amount}: {payment.amountKzt} {payment.currency}
+                  </div>
+                  <div className="break-anywhere">
+                    {t.paidAt}: {formatDate(payment.createdAt, lang)}
+                  </div>
                 </div>
-              </article>
+              </div>
             ))}
           </div>
-        </section>
+        </div>
       </div>
     </main>
   );

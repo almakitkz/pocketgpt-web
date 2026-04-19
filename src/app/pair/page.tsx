@@ -80,7 +80,7 @@ export default function PairPage() {
 
   return (
     <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-6 text-white sm:px-6 sm:py-10">
-      <div className="mx-auto w-full max-w-[520px] rounded-3xl border border-[#1f2937] bg-[#111827] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:p-6">
+      <div className="mx-auto mt-2 w-full max-w-[520px] rounded-3xl border border-[#1f2937] bg-[#111827] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.18)] sm:mt-6 sm:p-6">
         <h1 className="mb-2 text-3xl font-bold">{t.title}</h1>
         <p className="mt-0 text-sm text-[#a1a1aa] sm:text-base">{t.subtitle}</p>
 
@@ -91,17 +91,17 @@ export default function PairPage() {
             value={code}
             onChange={(e) => setCode(e.target.value)}
             required
-            className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition placeholder:text-white/40 focus:border-blue-500"
+            className="w-full min-w-0 rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none placeholder:text-white/45"
           />
 
           {errorText ? (
-            <div className="rounded-xl bg-[#3f1d1d] p-3 text-sm text-[#fecaca]">
+            <div className="break-anywhere rounded-xl bg-[#3f1d1d] p-3 text-sm text-[#fecaca]">
               {errorText}
             </div>
           ) : null}
 
           {successText ? (
-            <div className="rounded-xl bg-[#12311e] p-3 text-sm text-[#bbf7d0]">
+            <div className="break-anywhere rounded-xl bg-[#12311e] p-3 text-sm text-[#bbf7d0]">
               {successText}
             </div>
           ) : null}
