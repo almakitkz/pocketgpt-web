@@ -159,7 +159,7 @@ const TEXT = {
   ru: {
     title: "Billing",
     subtitle:
-      "Выбери устройство и один из двух тарифов. После успешной оплаты backend автоматически активирует подписку.",
+      "Выбери устройство и один из тарифов. Перед оплатой нужно согласиться с условиями оплаты и политикой возврата.",
     authRequired: "Нужна авторизация. Войди в аккаунт заново.",
     loading: "Загрузка...",
     loadingDevices: "Загружаем устройства...",
@@ -170,21 +170,24 @@ const TEXT = {
     noPayments: "История оплат пока пуста.",
     myDevices: "Твои устройства",
     plans: "Доступные планы",
+    selectedDevice: "Выбранное устройство",
+    selectedPlan: "Выбранный план",
     paymentHistory: "История оплат",
     selected: "Выбрано",
-    chooseDevice: "Сначала выбери устройство слева.",
-    choosePlan: "Теперь выбери план справа.",
+    chooseDevice: "Сначала выбери устройство.",
+    choosePlan: "Теперь выбери план.",
     paypalReady: "PayPal готов",
     paypalNotReady:
       "PayPal Client ID не найден. Проверь NEXT_PUBLIC_PAYPAL_CLIENT_ID в Vercel.",
-    paymentHint: "Выбери план справа, затем оплати через PayPal.",
+    paymentHint:
+      "После выбора устройства и плана можно оплатить через PayPal. Доступ активируется автоматически после успешной оплаты.",
     creatingOrder: "Создаём заказ PayPal...",
     capturingOrder: "Подтверждаем оплату...",
     paymentSuccess: "Оплата прошла успешно. Подписка активирована.",
     paymentCancelled: "Оплата отменена.",
     paymentError: "Не удалось начать оплату.",
     refresh: "Обновить",
-    paired: "Pairing",
+    paired: "Привязка",
     accessNow: "Доступ сейчас",
     trial: "Триал",
     subscription: "Подписка",
@@ -202,15 +205,6 @@ const TEXT = {
     duration: "Длительность",
     requests: "запросов",
     days: "дней",
-    selectedDevice: "Выбранное устройство",
-    selectedPlan: "Выбранный план",
-    status: "Статус",
-    automaticActivation: "Автоматическая активация",
-    automaticActivationText:
-      "После успешной оплаты backend автоматически создаст DeviceSubscription и устройство сразу получит доступ.",
-    processing: "Идёт обработка...",
-    payFor: "Оплата для",
-    planIncludes: "В тариф входит",
     currentPlan: "Текущий план",
     currentUsage: "Текущий расход",
     provider: "Провайдер",
@@ -218,11 +212,19 @@ const TEXT = {
     device: "Устройство",
     createdAt: "Дата",
     unlimited: "без лимита",
+    termsLabelStart: "Я согласен(на) с ",
+    termsLabelMiddle: "условиями оплаты",
+    termsLabelAnd: " и ",
+    termsLabelEnd: "политикой возврата",
+    termsRequired:
+      "Чтобы оплатить, нужно согласиться с условиями оплаты и политикой возврата.",
+    digitalService: "Цифровой сервис",
+    noInstantRefund: "Без мгновенного возврата",
   },
   en: {
     title: "Billing",
     subtitle:
-      "Choose a device and one of the two plans. After successful payment, the backend will activate the subscription automatically.",
+      "Choose a device and a plan. Before payment, you must agree to the payment terms and refund policy.",
     authRequired: "Authorization required. Please sign in again.",
     loading: "Loading...",
     loadingDevices: "Loading devices...",
@@ -233,14 +235,17 @@ const TEXT = {
     noPayments: "Payment history is empty.",
     myDevices: "Your devices",
     plans: "Available plans",
+    selectedDevice: "Selected device",
+    selectedPlan: "Selected plan",
     paymentHistory: "Payment history",
     selected: "Selected",
-    chooseDevice: "First choose a device on the left.",
-    choosePlan: "Now choose a plan on the right.",
+    chooseDevice: "First choose a device.",
+    choosePlan: "Now choose a plan.",
     paypalReady: "PayPal is ready",
     paypalNotReady:
       "PayPal Client ID is missing. Check NEXT_PUBLIC_PAYPAL_CLIENT_ID in Vercel.",
-    paymentHint: "Choose a plan on the right, then pay with PayPal.",
+    paymentHint:
+      "After selecting a device and a plan, you can pay with PayPal. Access is activated automatically after successful payment.",
     creatingOrder: "Creating PayPal order...",
     capturingOrder: "Capturing payment...",
     paymentSuccess: "Payment completed successfully. Subscription activated.",
@@ -265,15 +270,6 @@ const TEXT = {
     duration: "Duration",
     requests: "requests",
     days: "days",
-    selectedDevice: "Selected device",
-    selectedPlan: "Selected plan",
-    status: "Status",
-    automaticActivation: "Automatic activation",
-    automaticActivationText:
-      "After successful payment, the backend will automatically create DeviceSubscription and the device will get access immediately.",
-    processing: "Processing...",
-    payFor: "Payment for",
-    planIncludes: "Plan includes",
     currentPlan: "Current plan",
     currentUsage: "Current usage",
     provider: "Provider",
@@ -281,61 +277,61 @@ const TEXT = {
     device: "Device",
     createdAt: "Date",
     unlimited: "unlimited",
+    termsLabelStart: "I agree to the ",
+    termsLabelMiddle: "payment terms",
+    termsLabelAnd: " and ",
+    termsLabelEnd: "refund policy",
+    termsRequired:
+      "You must agree to the payment terms and refund policy before paying.",
+    digitalService: "Digital service",
+    noInstantRefund: "No instant refund",
   },
 } as const;
 
-function getStoredToken(): string {
-  if (typeof window === "undefined") return "";
-  return (
-    localStorage.getItem("token") ||
-    localStorage.getItem("auth_token") ||
-    localStorage.getItem("jwt") ||
-    ""
-  );
-}
-
 function getStoredLang(): Lang {
   if (typeof window === "undefined") return "ru";
-  const raw =
-    localStorage.getItem("lang") ||
-    localStorage.getItem("locale") ||
-    localStorage.getItem("language") ||
-    localStorage.getItem("site_lang") ||
-    "ru";
-  return raw.toLowerCase().startsWith("en") ? "en" : "ru";
+  return localStorage.getItem("site_lang") === "en" ? "en" : "ru";
 }
 
-function formatDate(value: string | null, lang: Lang): string {
+function getStoredToken(): string {
+  if (typeof window === "undefined") return "";
+  const keys = [
+    "authToken",
+    "token",
+    "jwt",
+    "pocketgpt_token",
+    "pocketgpt_auth_token",
+  ];
+  for (const key of keys) {
+    const value = localStorage.getItem(key);
+    if (value) return value;
+  }
+  return "";
+}
+
+function formatDate(value: string | null, lang: Lang) {
   if (!value) return "—";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat(lang === "ru" ? "ru-RU" : "en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
-function buildErrorMessage(
-  fallback: string,
-  payload?: ApiErrorPayload | null
-): string {
-  const serverMessage = payload?.error?.message?.trim();
-  if (serverMessage) return serverMessage;
-  return fallback;
-}
-
-function formatRequestLimit(
-  value: number | null | undefined,
-  t: (typeof TEXT)[Lang]
-) {
-  if (value === null || value === undefined || value <= 0) return t.unlimited;
-  return `${value} ${t.requests}`;
+function buildErrorMessage(fallback: string, error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  const payload = error as ApiErrorPayload | null;
+  return payload?.error?.message || fallback;
 }
 
 async function apiRequest<T>(
   path: string,
-  options: RequestInit = {},
+  init: RequestInit = {},
   token?: string
 ): Promise<T> {
-  const headers = new Headers(options.headers || {});
-  if (!(options.body instanceof FormData)) {
+  const headers = new Headers(init.headers || {});
+  if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");
   }
   if (token) {
@@ -343,24 +339,15 @@ async function apiRequest<T>(
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
+    ...init,
     headers,
     cache: "no-store",
   });
 
-  const text = await response.text();
-  let data: unknown = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = null;
-  }
-
+  const data = (await response.json().catch(() => null)) as T | ApiErrorPayload | null;
   if (!response.ok) {
-    throw data || { error: { message: `HTTP ${response.status}` } };
+    throw data || new Error(`Request failed: ${response.status}`);
   }
-
   return data as T;
 }
 
@@ -381,6 +368,7 @@ export default function BillingPage() {
   const [messageType, setMessageType] = useState<"idle" | "success" | "error">(
     "idle"
   );
+  const [agreed, setAgreed] = useState(false);
 
   const t = TEXT[lang];
 
@@ -388,6 +376,10 @@ export default function BillingPage() {
     setMounted(true);
     setLang(getStoredLang());
     setToken(getStoredToken());
+
+    const updateLang = () => setLang(getStoredLang());
+    window.addEventListener("site-language-change", updateLang);
+    return () => window.removeEventListener("site-language-change", updateLang);
   }, []);
 
   const loadDevices = useCallback(async (authToken: string) => {
@@ -474,7 +466,8 @@ export default function BillingPage() {
     [plans, selectedPlanId]
   );
 
-  const paypalEnabled = !!PAYPAL_CLIENT_ID && !!token && !!selectedDevice && !!selectedPlan;
+  const paypalEnabled =
+    !!PAYPAL_CLIENT_ID && !!token && !!selectedDevice && !!selectedPlan && agreed;
 
   const refreshAll = useCallback(async () => {
     if (!token) return;
@@ -513,379 +506,410 @@ export default function BillingPage() {
     );
   }
 
-  if (!token) {
-    return (
-      <main className="mx-auto max-w-6xl px-4 py-6 text-white sm:px-6 sm:py-10">
-        <div className="rounded-3xl border border-red-900/40 bg-[#081226] p-5 text-red-300 sm:p-6">
-          {t.authRequired}
-        </div>
-      </main>
-    );
-  }
-
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 text-white sm:px-6 sm:py-10">
-      <div className="mb-5 rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:mb-6 sm:p-6">
-        <div className="mb-2 text-2xl font-bold sm:text-3xl">{t.title}</div>
-        <div className="text-sm text-white/70 sm:text-base">{t.subtitle}</div>
-      </div>
+      <div className="rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold sm:text-4xl">{t.title}</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-white/75 sm:text-base">
+              {t.subtitle}
+            </p>
+          </div>
 
-      {message ? (
-        <div
-          className={`mb-5 break-anywhere rounded-2xl border p-4 sm:mb-6 ${
-            messageType === "success"
-              ? "border-green-700/50 bg-green-950/30 text-green-300"
-              : messageType === "error"
-              ? "border-red-700/50 bg-red-950/30 text-red-300"
-              : "border-blue-700/50 bg-blue-950/30 text-blue-200"
-          }`}
-        >
-          {message}
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/75">
+              {t.digitalService}
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/75">
+              {t.noInstantRefund}
+            </span>
+            <button
+              type="button"
+              onClick={() => void refreshAll()}
+              className="rounded-full border border-blue-700/40 bg-blue-600/10 px-4 py-2 text-sm text-white transition hover:bg-blue-600/20"
+            >
+              {t.refresh}
+            </button>
+          </div>
         </div>
-      ) : null}
 
-      <div className="mb-5 flex sm:mb-6 sm:justify-end">
-        <button
-          onClick={() => void refreshAll()}
-          className="w-full rounded-xl border border-blue-700/50 bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-500 sm:w-auto sm:py-2"
-        >
-          {t.refresh}
-        </button>
-      </div>
+        {message ? (
+          <div
+            className={`mt-5 rounded-2xl border p-4 text-sm sm:text-base ${
+              messageType === "success"
+                ? "border-green-700/40 bg-green-950/30 text-green-300"
+                : messageType === "error"
+                ? "border-red-700/40 bg-red-950/30 text-red-300"
+                : "border-blue-700/40 bg-blue-950/30 text-blue-300"
+            }`}
+          >
+            {message}
+          </div>
+        ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
-        <section className="min-w-0 rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
-          <h2 className="mb-4 text-xl font-semibold sm:text-2xl">{t.myDevices}</h2>
+        <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-5">
+            <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
+              <div className="mb-4 text-xl font-semibold sm:text-2xl">{t.myDevices}</div>
 
-          {loadingDevices ? (
-            <div className="text-white/70">{t.loadingDevices}</div>
-          ) : devices.length === 0 ? (
-            <div className="text-white/70">{t.noDevices}</div>
-          ) : (
-            <div className="space-y-4">
-              {devices.map((item) => {
-                const isSelected = item.device.id === selectedDeviceId;
-
-                return (
-                  <button
-                    key={item.device.id}
-                    type="button"
-                    onClick={() => setSelectedDeviceId(item.device.id)}
-                    className={`w-full min-w-0 rounded-2xl border p-4 text-left transition sm:p-5 ${
-                      isSelected
-                        ? "border-blue-500 bg-blue-950/30"
-                        : "border-blue-900/40 bg-[#07101f] hover:border-blue-700/60"
-                    }`}
-                  >
-                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="break-anywhere text-xl font-semibold sm:text-2xl">
-                          {item.device.name}
-                        </div>
-                      </div>
-
-                      <div
-                        className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${
-                          item.status.hasAccess
-                            ? "bg-green-900/40 text-green-300"
-                            : "bg-red-900/40 text-red-300"
+              {loadingDevices ? (
+                <div className="text-white/70">{t.loadingDevices}</div>
+              ) : devices.length === 0 ? (
+                <div className="text-white/70">{t.noDevices}</div>
+              ) : (
+                <div className="space-y-4">
+                  {devices.map((item) => {
+                    const selected = item.device.id === selectedDeviceId;
+                    return (
+                      <button
+                        key={item.device.id}
+                        type="button"
+                        onClick={() => setSelectedDeviceId(item.device.id)}
+                        className={`w-full rounded-2xl border p-4 text-left transition ${
+                          selected
+                            ? "border-blue-500 bg-blue-600/10"
+                            : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
                         }`}
                       >
-                        {item.status.hasAccess ? t.active : t.inactive}
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-base font-semibold sm:text-lg">
+                              {item.device.name}
+                            </div>
+                            <div className="break-anywhere mt-1 text-xs text-white/45 sm:text-sm">
+                              {item.device.uid}
+                            </div>
+                          </div>
+                          {selected ? (
+                            <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-medium">
+                              {t.selected}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-white/75 sm:grid-cols-4 sm:text-sm">
+                          <div>
+                            <div className="text-white/45">{t.paired}</div>
+                            <div>{item.status.isPaired ? t.yes : t.no}</div>
+                          </div>
+                          <div>
+                            <div className="text-white/45">{t.accessNow}</div>
+                            <div>{item.status.hasAccess ? t.active : t.inactive}</div>
+                          </div>
+                          <div>
+                            <div className="text-white/45">{t.trial}</div>
+                            <div>{trialText(item)}</div>
+                          </div>
+                          <div>
+                            <div className="text-white/45">{t.subscription}</div>
+                            <div>{subscriptionText(item)}</div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
+              <div className="mb-4 text-xl font-semibold sm:text-2xl">{t.paymentHistory}</div>
+
+              {loadingPayments ? (
+                <div className="text-white/70">{t.loadingPayments}</div>
+              ) : payments.length === 0 ? (
+                <div className="text-white/70">{t.noPayments}</div>
+              ) : (
+                <div className="space-y-4">
+                  {payments.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-sm font-medium sm:text-base">
+                          {item.plan?.name || "—"} · {item.amountKzt} KZT
+                        </div>
+                        <div className="text-xs text-white/50 sm:text-sm">
+                          {formatDate(item.createdAt, lang)}
+                        </div>
+                      </div>
+                      <div className="mt-2 grid gap-2 text-xs text-white/65 sm:grid-cols-3 sm:text-sm">
+                        <div>
+                          <span className="text-white/45">{t.provider}: </span>
+                          {item.provider}
+                        </div>
+                        <div className="break-anywhere">
+                          <span className="text-white/45">{t.device}: </span>
+                          {item.device?.name || "—"}
+                        </div>
+                        <div>
+                          <span className="text-white/45">{t.status}: </span>
+                          {item.status}
+                        </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
 
-                    <div className="space-y-1 text-sm text-white/85 sm:text-base">
-                      <div className="break-anywhere">UID: {item.device.uid}</div>
-                      <div>
-                        {t.paired}: {item.status.isPaired ? t.yes : t.no}
-                      </div>
-                      <div>
-                        {t.accessNow}: {item.status.hasAccess ? t.yes : t.no}
-                      </div>
-                      <div className="break-anywhere">
-                        {t.trial}: {trialText(item)}
-                      </div>
-                      <div className="break-anywhere">
-                        {t.subscription}: {subscriptionText(item)}
-                      </div>
-                      <div>
-                        {t.usage}: {formatRequestLimit(item.usage.requestLimit, t)}
-                      </div>
-                      <div>
-                        {t.used}: {item.usage.usedRequests}
-                      </div>
-                      <div>
-                        {t.remaining}: {item.usage.remainingRequests ?? "—"}
-                      </div>
+          <div className="space-y-5">
+            <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
+              <div className="mb-4 text-xl font-semibold sm:text-2xl">{t.plans}</div>
+
+              {loadingPlans ? (
+                <div className="text-white/70">{t.loadingPlans}</div>
+              ) : plans.length === 0 ? (
+                <div className="text-white/70">{t.noPlans}</div>
+              ) : (
+                <div className="space-y-4">
+                  {plans.map((plan) => {
+                    const selected = plan.id === selectedPlanId;
+                    return (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => setSelectedPlanId(plan.id)}
+                        className={`w-full rounded-2xl border p-4 text-left transition ${
+                          selected
+                            ? "border-blue-500 bg-blue-600/10"
+                            : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-lg font-semibold">{plan.name}</div>
+                            <div className="mt-1 text-sm text-white/55">
+                              {plan.durationDays} {t.days}
+                            </div>
+                          </div>
+                          {selected ? (
+                            <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-medium">
+                              {t.selected}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-4 text-2xl font-semibold">{plan.priceKzt} KZT</div>
+                        <div className="mt-2 text-sm text-white/65">
+                          {plan.requestLimit === null
+                            ? t.unlimited
+                            : `${plan.requestLimit} ${t.requests}`}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
+              <div className="mb-4 text-xl font-semibold sm:text-2xl">{t.title}</div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="mb-2 text-sm uppercase tracking-[0.2em] text-white/35">
+                  {t.selectedDevice}
+                </div>
+                <div className="break-anywhere text-sm text-white/85 sm:text-base">
+                  {selectedDevice
+                    ? `${selectedDevice.device.name} (${selectedDevice.device.uid})`
+                    : t.chooseDevice}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="mb-2 text-sm uppercase tracking-[0.2em] text-white/35">
+                  {t.selectedPlan}
+                </div>
+                <div className="break-anywhere text-sm text-white/85 sm:text-base">
+                  {selectedPlan
+                    ? `${selectedPlan.name} — ${selectedPlan.priceKzt} KZT / ${selectedPlan.durationDays} ${t.days}`
+                    : t.choosePlan}
+                </div>
+
+                {selectedDevice ? (
+                  <div className="mt-3 space-y-1 text-sm text-white/70">
+                    <div className="break-anywhere">
+                      {t.currentPlan}: {selectedDevice.subscription.plan?.name || t.inactive}
                     </div>
+                    <div>
+                      {t.currentUsage}: {selectedDevice.usage.usedRequests} /{" "}
+                      {selectedDevice.usage.requestLimit ?? "∞"}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
 
-                    {isSelected ? (
-                      <div className="mt-4 text-sm font-medium text-blue-300">
-                        {t.selected}
-                      </div>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </section>
+              <div className="mt-4 rounded-2xl border border-amber-700/40 bg-amber-950/30 p-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={agreed}
+                    onChange={(e) => setAgreed(e.target.checked)}
+                    className="mt-1 h-4 w-4 shrink-0 rounded border-white/30 bg-transparent accent-blue-600"
+                  />
+                  <span className="text-sm leading-6 text-white/85">
+                    {t.termsLabelStart}
+                    <a
+                      href="/terms"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-300 underline underline-offset-4 hover:text-blue-200"
+                    >
+                      {t.termsLabelMiddle}
+                    </a>
+                    {t.termsLabelAnd}
+                    <a
+                      href="/refund-policy"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-300 underline underline-offset-4 hover:text-blue-200"
+                    >
+                      {t.termsLabelEnd}
+                    </a>
+                  </span>
+                </label>
 
-        <section className="min-w-0 rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:p-6">
-          <h2 className="mb-4 text-xl font-semibold sm:text-2xl">{t.plans}</h2>
+                {!agreed ? (
+                  <div className="mt-3 text-xs text-amber-200/90">{t.termsRequired}</div>
+                ) : null}
+              </div>
 
-          {loadingPlans ? (
-            <div className="text-white/70">{t.loadingPlans}</div>
-          ) : plans.length === 0 ? (
-            <div className="text-white/70">{t.noPlans}</div>
-          ) : (
-            <div className="space-y-4">
-              {plans.map((plan) => {
-                const isSelected = plan.id === selectedPlanId;
+              <div className="mt-4 text-sm text-white/70 sm:text-base">{t.paymentHint}</div>
 
-                return (
-                  <button
-                    key={plan.id}
-                    type="button"
-                    onClick={() => setSelectedPlanId(plan.id)}
-                    className={`w-full min-w-0 rounded-2xl border p-4 text-left transition sm:p-5 ${
-                      isSelected
-                        ? "border-blue-500 bg-blue-950/30"
-                        : "border-blue-900/40 bg-[#07101f] hover:border-blue-700/60"
-                    }`}
+              {!PAYPAL_CLIENT_ID ? (
+                <div className="mt-4 break-anywhere rounded-xl border border-red-700/40 bg-red-950/30 p-4 text-sm text-red-300 sm:text-base">
+                  {t.paypalNotReady}
+                </div>
+              ) : (
+                <div className="mt-4 min-w-0">
+                  <div className="mb-3 text-sm text-green-400 sm:text-base">{t.paypalReady}</div>
+
+                  <PayPalScriptProvider
+                    options={{
+                      clientId: PAYPAL_CLIENT_ID,
+                      intent: "capture",
+                      currency: "USD",
+                      components: "buttons",
+                    }}
                   >
-                    <div className="mb-2 break-anywhere text-xl font-semibold sm:text-2xl">
-                      {plan.name}
-                    </div>
-
-                    <div className="space-y-1 text-sm text-white/85 sm:text-base">
-                      <div>
-                        {t.price}: {plan.priceKzt} KZT
-                      </div>
-                      <div>
-                        {t.duration}: {plan.durationDays} {t.days}
-                      </div>
-                      <div>
-                        {t.planIncludes}: {formatRequestLimit(plan.requestLimit, t)}
-                      </div>
-                    </div>
-
-                    {isSelected ? (
-                      <div className="mt-4 text-sm font-medium text-blue-300">
-                        {t.selected}
-                      </div>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="mt-6 min-w-0 rounded-2xl border border-blue-900/40 bg-[#07101f] p-4 sm:p-5">
-            <div className="mb-2 text-base font-semibold sm:text-lg">{t.selectedDevice}</div>
-            <div className="mb-4 break-anywhere text-sm text-white/80 sm:text-base">
-              {selectedDevice
-                ? `${selectedDevice.device.name} (${selectedDevice.device.uid})`
-                : t.chooseDevice}
-            </div>
-
-            <div className="mb-2 text-base font-semibold sm:text-lg">{t.selectedPlan}</div>
-            <div className="mb-4 break-anywhere text-sm text-white/80 sm:text-base">
-              {selectedPlan
-                ? `${selectedPlan.name} — ${selectedPlan.priceKzt} KZT / ${selectedPlan.durationDays} ${t.days}`
-                : t.choosePlan}
-            </div>
-
-            {selectedDevice ? (
-              <div className="mb-4 space-y-1 text-sm text-white/70">
-                <div className="break-anywhere">
-                  {t.currentPlan}: {selectedDevice.subscription.plan?.name || t.inactive}
-                </div>
-                <div>
-                  {t.currentUsage}: {selectedDevice.usage.usedRequests} /{" "}
-                  {selectedDevice.usage.requestLimit ?? "∞"}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="mb-3 text-sm text-white/70 sm:text-base">{t.paymentHint}</div>
-
-            {!PAYPAL_CLIENT_ID ? (
-              <div className="break-anywhere rounded-xl border border-red-700/40 bg-red-950/30 p-4 text-sm text-red-300 sm:text-base">
-                {t.paypalNotReady}
-              </div>
-            ) : (
-              <div className="min-w-0">
-                <div className="mb-3 text-sm text-green-400 sm:text-base">{t.paypalReady}</div>
-
-                <PayPalScriptProvider
-                  options={{
-                    clientId: PAYPAL_CLIENT_ID,
-                    intent: "capture",
-                    currency: "USD",
-                    components: "buttons",
-                  }}
-                >
-                  <div className="min-w-0">
-                    <PayPalButtons
-                      key={`${selectedDeviceId}-${selectedPlanId}`}
-                      style={{
-                        layout: "vertical",
-                        shape: "rect",
-                        label: "paypal",
-                      }}
-                      disabled={!paypalEnabled || isCapturing}
-                      forceReRender={[selectedDeviceId, selectedPlanId]}
-                      createOrder={async () => {
-                        if (!token || !selectedDevice || !selectedPlan) {
-                          const msg = !token ? t.authRequired : t.paymentError;
-                          setMessageType("error");
-                          setMessage(msg);
-                          throw new Error(msg);
-                        }
-
-                        setMessageType("idle");
-                        setMessage(t.creatingOrder);
-
-                        try {
-                          const data = await apiRequest<CreateOrderResponse>(
-                            "/v1/billing/create-order",
-                            {
-                              method: "POST",
-                              body: JSON.stringify({
-                                deviceId: selectedDevice.device.id,
-                                planId: selectedPlan.id,
-                                lang,
-                              }),
-                            },
-                            token
-                          );
-
-                          if (!data.orderId) {
-                            throw new Error("Missing orderId");
+                    <div className="min-w-0">
+                      <PayPalButtons
+                        key={`${selectedDeviceId}-${selectedPlanId}-${agreed ? "agree" : "noagree"}`}
+                        style={{
+                          layout: "vertical",
+                          shape: "rect",
+                          label: "paypal",
+                        }}
+                        disabled={!paypalEnabled || isCapturing}
+                        forceReRender={[selectedDeviceId, selectedPlanId, agreed]}
+                        createOrder={async () => {
+                          if (!agreed) {
+                            const msg = t.termsRequired;
+                            setMessageType("error");
+                            setMessage(msg);
+                            throw new Error(msg);
                           }
 
-                          return data.orderId;
-                        } catch (error) {
-                          const payload = error as ApiErrorPayload;
-                          const msg = buildErrorMessage(t.paymentError, payload);
-                          setMessageType("error");
-                          setMessage(msg);
-                          throw new Error(msg);
-                        }
-                      }}
-                      onApprove={async (data) => {
-                        if (!token || !selectedDevice || !selectedPlan || !data.orderID) {
-                          const msg = t.paymentError;
-                          setMessageType("error");
-                          setMessage(msg);
-                          throw new Error(msg);
-                        }
+                          if (!token || !selectedDevice || !selectedPlan) {
+                            const msg = !token ? t.authRequired : t.paymentError;
+                            setMessageType("error");
+                            setMessage(msg);
+                            throw new Error(msg);
+                          }
 
-                        setIsCapturing(true);
-                        setMessageType("idle");
-                        setMessage(t.capturingOrder);
+                          setMessageType("idle");
+                          setMessage(t.creatingOrder);
 
-                        try {
-                          await apiRequest<CaptureOrderResponse>(
-                            "/v1/billing/capture-order",
-                            {
-                              method: "POST",
-                              body: JSON.stringify({
-                                orderId: data.orderID,
-                                deviceId: selectedDevice.device.id,
-                                planId: selectedPlan.id,
-                                lang,
-                              }),
-                            },
-                            token
-                          );
+                          try {
+                            const data = await apiRequest<CreateOrderResponse>(
+                              "/v1/billing/create-order",
+                              {
+                                method: "POST",
+                                body: JSON.stringify({
+                                  deviceId: selectedDevice.device.id,
+                                  planId: selectedPlan.id,
+                                  lang,
+                                }),
+                              },
+                              token
+                            );
 
-                          await Promise.all([
-                            loadDevices(token),
-                            loadPayments(token, selectedDevice.device.id),
-                          ]);
+                            if (!data.orderId) {
+                              throw new Error("Missing orderId");
+                            }
 
-                          setMessageType("success");
-                          setMessage(t.paymentSuccess);
-                        } catch (error) {
-                          const payload = error as ApiErrorPayload;
-                          const msg = buildErrorMessage(t.paymentError, payload);
-                          setMessageType("error");
-                          setMessage(msg);
-                          throw new Error(msg);
-                        } finally {
+                            return data.orderId;
+                          } catch (error) {
+                            const msg = buildErrorMessage(t.paymentError, error);
+                            setMessageType("error");
+                            setMessage(msg);
+                            throw new Error(msg);
+                          }
+                        }}
+                        onApprove={async (data) => {
+                          if (!token || !selectedDevice || !selectedPlan || !data.orderID) {
+                            const msg = t.paymentError;
+                            setMessageType("error");
+                            setMessage(msg);
+                            throw new Error(msg);
+                          }
+
+                          setIsCapturing(true);
+                          setMessageType("idle");
+                          setMessage(t.capturingOrder);
+
+                          try {
+                            await apiRequest<CaptureOrderResponse>(
+                              "/v1/billing/capture-order",
+                              {
+                                method: "POST",
+                                body: JSON.stringify({
+                                  orderId: data.orderID,
+                                  deviceId: selectedDevice.device.id,
+                                  planId: selectedPlan.id,
+                                  lang,
+                                }),
+                              },
+                              token
+                            );
+
+                            await Promise.all([
+                              loadDevices(token),
+                              loadPayments(token, selectedDevice.device.id),
+                            ]);
+
+                            setMessageType("success");
+                            setMessage(t.paymentSuccess);
+                          } catch (error) {
+                            const msg = buildErrorMessage(t.paymentError, error);
+                            setMessageType("error");
+                            setMessage(msg);
+                            throw new Error(msg);
+                          } finally {
+                            setIsCapturing(false);
+                          }
+                        }}
+                        onCancel={() => {
                           setIsCapturing(false);
-                        }
-                      }}
-                      onCancel={() => {
-                        setIsCapturing(false);
-                        setMessageType("error");
-                        setMessage(t.paymentCancelled);
-                      }}
-                      onError={(error) => {
-                        console.error("PayPal button error:", error);
-                        setIsCapturing(false);
-                        setMessageType("error");
-                        setMessage(t.paymentError);
-                      }}
-                    />
-                  </div>
-                </PayPalScriptProvider>
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
-
-      <div className="mt-5 rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:mt-6 sm:p-6">
-        <div className="mb-4 text-xl font-semibold sm:text-2xl">{t.paymentHistory}</div>
-
-        {loadingPayments ? (
-          <div className="text-white/70">{t.loadingPayments}</div>
-        ) : payments.length === 0 ? (
-          <div className="text-white/70">{t.noPayments}</div>
-        ) : (
-          <div className="space-y-4">
-            {payments.map((payment) => (
-              <div
-                key={payment.id}
-                className="min-w-0 rounded-2xl border border-blue-900/40 bg-[#07101f] p-4"
-              >
-                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-                  <div className="break-anywhere text-base font-semibold sm:text-lg">
-                    {payment.plan?.name || "Plan"} — {payment.amountKzt} KZT
-                  </div>
-                  <div className="w-fit rounded-full bg-green-900/30 px-3 py-1 text-sm text-green-300">
-                    {payment.status}
-                  </div>
+                          setMessageType("error");
+                          setMessage(t.paymentCancelled);
+                        }}
+                        onError={(error) => {
+                          console.error("PayPal button error:", error);
+                          setIsCapturing(false);
+                          setMessageType("error");
+                          setMessage(t.paymentError);
+                        }}
+                      />
+                    </div>
+                  </PayPalScriptProvider>
                 </div>
-
-                <div className="space-y-1 text-sm text-white/75">
-                  <div className="break-anywhere">
-                    {t.provider}: {payment.provider}
-                  </div>
-                  <div className="break-anywhere">
-                    {t.device}: {payment.device?.name || "—"}
-                  </div>
-                  <div>
-                    {t.amount}: {payment.amountKzt} {payment.currency}
-                  </div>
-                  <div className="break-anywhere">
-                    {t.createdAt}: {formatDate(payment.createdAt, lang)}
-                  </div>
-                </div>
-              </div>
-            ))}
+              )}
+            </section>
           </div>
-        )}
-      </div>
-
-      <div className="mt-5 rounded-3xl border border-blue-900/40 bg-[#081226] p-5 sm:mt-6 sm:p-6">
-        <div className="mb-2 text-xl font-semibold sm:text-2xl">{t.automaticActivation}</div>
-        <div className="text-sm text-white/70 sm:text-base">
-          {isCapturing ? t.processing : t.automaticActivationText}
         </div>
       </div>
     </main>
