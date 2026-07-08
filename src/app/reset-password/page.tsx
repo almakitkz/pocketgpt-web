@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
-type Lang = "ru" | "en";
+type Lang = "ru" | "en" | "kz";
 
 const TEXT = {
   ru: {
@@ -46,11 +46,34 @@ const TEXT = {
     forgotLink: "Send code again",
     back: "Back to login",
   },
+  kz: {
+    title: "Құпиясөзді қалпына келтіру",
+    subtitle: "Email-дағы кодты енгізіп, PocketGPT үшін жаңа құпиясөз қой.",
+    emailPlaceholder: "Email",
+    codeLabel: "Email-дағы код",
+    passwordPlaceholder: "Жаңа құпиясөз кемінде 8 таңба",
+    confirmPasswordPlaceholder: "Жаңа құпиясөзді раста",
+    verifyCode: "Кодты тексеру",
+    verifying: "Тексеріліп жатыр...",
+    submit: "Жаңа құпиясөзді сақтау",
+    loading: "Сақталуда...",
+    fallbackError: "Құпиясөз қалпына келмеді",
+    success: "Құпиясөз өзгерді. Кіру бетіне өтеміз...",
+    mismatch: "Құпиясөздер сәйкес емес",
+    invalidCode: "Кодтың барлық 6 цифрын енгіз",
+    show: "Құпиясөзді көрсету",
+    hide: "Құпиясөзді жасыру",
+    forgotLink: "Кодты қайта жіберу",
+    back: "Кіруге қайту",
+  },
 } as const;
 
 function getLang(): Lang {
   if (typeof window === "undefined") return "ru";
-  return localStorage.getItem("site_lang") === "en" ? "en" : "ru";
+  const saved = localStorage.getItem("site_lang") || localStorage.getItem("lang");
+  if (saved === "en") return "en";
+  if (saved === "kz" || saved === "kk") return "kz";
+  return "ru";
 }
 
 function EyeButton({

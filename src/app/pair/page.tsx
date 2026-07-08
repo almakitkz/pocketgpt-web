@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 
-type Lang = "ru" | "en";
+type Lang = "ru" | "en" | "kz";
 
 const TEXT = {
   ru: {
@@ -29,11 +29,25 @@ const TEXT = {
     successPrefix: "Device",
     successSuffix: "paired successfully",
   },
+  kz: {
+    title: "Құрылғыны қосу",
+    subtitle: "PocketGPT экранында көрсетілген 6 таңбалы кодты енгіз.",
+    placeholder: "Мысалы 123456",
+    submit: "Құрылғыны қосу",
+    loading: "Қосылып жатыр...",
+    loginFirst: "Алдымен аккаунтқа кір",
+    failed: "Қосу қатесі",
+    successPrefix: "Құрылғы",
+    successSuffix: "сәтті қосылды",
+  },
 } as const;
 
 function getLang(): Lang {
   if (typeof window === "undefined") return "ru";
-  return localStorage.getItem("site_lang") === "en" ? "en" : "ru";
+  const saved = localStorage.getItem("site_lang") || localStorage.getItem("lang");
+  if (saved === "en") return "en";
+  if (saved === "kz" || saved === "kk") return "kz";
+  return "ru";
 }
 
 export default function PairPage() {

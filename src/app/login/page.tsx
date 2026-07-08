@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
-type Lang = "ru" | "en";
+type Lang = "ru" | "en" | "kz";
 
 const TEXT = {
   ru: {
@@ -34,11 +34,28 @@ const TEXT = {
     show: "Show password",
     hide: "Hide password",
   },
+  kz: {
+    title: "Кіру",
+    subtitle: "Құрылғыларды, жазылымды және аккаунтты басқару үшін PocketGPT аккаунтыңа кір.",
+    emailPlaceholder: "Email",
+    passwordPlaceholder: "Құпиясөз",
+    submit: "Кіру",
+    loading: "Кіріп жатырмыз...",
+    fallbackError: "Кіру қатесі",
+    signupHint: "Аккаунтың жоқ па?",
+    signupLink: "Аккаунт ашу",
+    forgotLink: "Құпиясөзді ұмыттың ба?",
+    show: "Құпиясөзді көрсету",
+    hide: "Құпиясөзді жасыру",
+  },
 } as const;
 
 function getLang(): Lang {
   if (typeof window === "undefined") return "ru";
-  return localStorage.getItem("site_lang") === "en" ? "en" : "ru";
+  const saved = localStorage.getItem("site_lang") || localStorage.getItem("lang");
+  if (saved === "en") return "en";
+  if (saved === "kz" || saved === "kk") return "kz";
+  return "ru";
 }
 
 function saveAuthFallback(token: string, user: unknown) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type Lang = "ru" | "en";
+type Lang = "ru" | "en" | "kz";
 
 const TEXT = {
   ru: {
@@ -19,12 +19,21 @@ const TEXT = {
     signup: "Create account",
     login: "Log in",
   },
+  kz: {
+    title: "PocketGPT",
+    description:
+      "Жеке кабинеті, сынақ мерзімі және жазылымдары бар физикалық AI-құрылғы.",
+    signup: "Аккаунт ашу",
+    login: "Кіру",
+  },
 } as const;
 
 function getSavedLang(): Lang {
   if (typeof window === "undefined") return "ru";
-  const saved = localStorage.getItem("site_lang");
-  return saved === "en" ? "en" : "ru";
+  const saved = localStorage.getItem("site_lang") || localStorage.getItem("lang");
+  if (saved === "en") return "en";
+  if (saved === "kz" || saved === "kk") return "kz";
+  return "ru";
 }
 
 export default function Home() {

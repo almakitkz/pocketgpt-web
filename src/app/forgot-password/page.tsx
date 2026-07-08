@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
-type Lang = "ru" | "en";
+type Lang = "ru" | "en" | "kz";
 
 const TEXT = {
   ru: {
@@ -28,11 +28,25 @@ const TEXT = {
     next: "Go to reset password",
     back: "Back to login",
   },
+  kz: {
+    title: "Құпиясөзді ұмыттың ба?",
+    subtitle: "Email енгіз. Құпиясөзді қалпына келтіру үшін 6 таңбалы код жібереміз.",
+    emailPlaceholder: "Email",
+    submit: "Код жіберу",
+    loading: "Жіберіліп жатыр...",
+    fallbackError: "Код жіберілмеді",
+    success: "Егер аккаунт бар болса, код email-ға жіберілді.",
+    next: "Құпиясөзді қалпына келтіруге өту",
+    back: "Кіруге қайту",
+  },
 } as const;
 
 function getLang(): Lang {
   if (typeof window === "undefined") return "ru";
-  return localStorage.getItem("site_lang") === "en" ? "en" : "ru";
+  const saved = localStorage.getItem("site_lang") || localStorage.getItem("lang");
+  if (saved === "en") return "en";
+  if (saved === "kz" || saved === "kk") return "kz";
+  return "ru";
 }
 
 export default function ForgotPasswordPage() {

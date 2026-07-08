@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { saveAuth } from "@/lib/auth";
 
-type Lang = "ru" | "en";
+type Lang = "ru" | "en" | "kz";
 
 const TEXT = {
   ru: {
@@ -35,11 +35,28 @@ const TEXT = {
     loginLink: "Back to login",
     success: "Email verified. Signing you in...",
   },
+  kz: {
+    title: "Email растау",
+    subtitle: "Email-ға жіберілген 6 таңбалы кодты енгіз.",
+    emailPlaceholder: "Email",
+    codePlaceholder: "6 таңбалы код",
+    submit: "Email растау",
+    loading: "Тексеріліп жатыр...",
+    resend: "Кодты қайта жіберу",
+    resendLoading: "Жіберіліп жатыр...",
+    resendSuccess: "Жаңа код жіберілді.",
+    fallbackError: "Email расталмады",
+    loginLink: "Кіруге қайту",
+    success: "Email расталды. Аккаунтқа кіріп жатырмыз...",
+  },
 } as const;
 
 function getLang(): Lang {
   if (typeof window === "undefined") return "ru";
-  return localStorage.getItem("site_lang") === "en" ? "en" : "ru";
+  const saved = localStorage.getItem("site_lang") || localStorage.getItem("lang");
+  if (saved === "en") return "en";
+  if (saved === "kz" || saved === "kk") return "kz";
+  return "ru";
 }
 
 export default function VerifyEmailPage() {

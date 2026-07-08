@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getToken, getUser } from "@/lib/auth";
 
-type Lang = "ru" | "en";
+type Lang = "ru" | "en" | "kz";
 
 type Plan = {
   id: string;
@@ -220,19 +220,79 @@ const TEXT = {
     activeCode: "Active code",
     status: "Status",
   },
+  kz: {
+    loading: "Жүктелуде...",
+    dashboard: "Жеке кабинет",
+    subtitle: "PocketGPT құрылғыларын басқар, қолжетімділікті бақыла және промокодтарды іске қос.",
+    email: "Email",
+    userId: "User ID",
+    myDevices: "Менің құрылғыларым",
+    noDevices: "Әзірге қосылған құрылғыларың жоқ.",
+    paymentHistory: "Төлем тарихы",
+    noPayments: "Төлем тарихы әзірге бос.",
+    active: "Белсенді",
+    inactive: "Белсенді емес",
+    deviceId: "Құрылғы ID",
+    disabled: "Өшірілген",
+    paired: "Қосылған",
+    yes: "Иә",
+    no: "Жоқ",
+    created: "Құрылған",
+    trial: "Сынақ мерзімі",
+    activeUntil: "дейін белсенді",
+    expiredAt: "аяқталған",
+    notStarted: "басталмаған",
+    subscription: "Жазылым",
+    inactiveSub: "белсенді емес",
+    until: "дейін",
+    planPrice: "Жоспар бағасы",
+    requestLimit: "Лимит",
+    usedRequests: "Қолданылды",
+    remainingRequests: "Қалды",
+    period: "Кезең",
+    days: "күн",
+    requests: "сұрау",
+    amount: "Сома",
+    provider: "Провайдер",
+    paidAt: "Төленді",
+    currentPlan: "Ағымдағы жоспар",
+    openBilling: "Төлем бетіне өту",
+    unlimited: "лимитсіз",
+    promoTitle: "Промокод",
+    promoSubtitle: "Бір реттік кодты енгізіп, мерзімсіз 500 сұрауды іске қос.",
+    selectDevice: "Құрылғыны таңда",
+    promoPlaceholder: "Мысалы: PKT-7F4K-92QM",
+    redeemPromo: "Промокодты іске қосу",
+    redeeming: "Іске қосылуда...",
+    promoSuccess: "Промокод сәтті іске қосылды.",
+    promoErrorNoDevice: "Алдымен құрылғыны таңда.",
+    promoErrorEmpty: "Промокод енгіз.",
+    promoBalance: "Промо-баланс",
+    promoTotal: "Барлық промо-сұрау",
+    promoUsed: "Қолданылған промо-сұрау",
+    promoRemaining: "Қалған промо-сұрау",
+    promoActive: "Промо белсенді",
+    promoInactive: "Промо белсенді емес",
+    promoGrants: "Іске қосылған кодтар",
+    refresh: "Жаңарту",
+    activeCode: "Белсенді код",
+    status: "Статус",
+  },
 } as const;
 
 function getLang(): Lang {
   if (typeof window === "undefined") return "ru";
   const v = localStorage.getItem("site_lang") || localStorage.getItem("lang") || "ru";
-  return v === "en" ? "en" : "ru";
+  if (v === "en") return "en";
+  if (v === "kz" || v === "kk") return "kz";
+  return "ru";
 }
 
 function formatDate(value: string | null | undefined, lang: Lang): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
+  return date.toLocaleString(lang === "en" ? "en-US" : lang === "kz" ? "kk-KZ" : "ru-RU");
 }
 
 function getAccessBadge(hasAccess: boolean, lang: Lang) {

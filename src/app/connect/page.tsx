@@ -73,7 +73,7 @@ const TEXT = {
     chooseDevice: "Устройство",
     noDevices: "Нет привязанных устройств.",
     nicknameTitle: "Никнейм устройства",
-    nicknameHint: "По никнейму друзья смогут найти твоё устройство для Connect.",
+    nicknameHint: "По никнейму друзья смогут найти твоё устройство для Connect. Максимум 15 символов: латиница, цифры, дефис, точка или подчёркивание.",
     nicknamePlaceholder: "например alibek-pocket",
     saveNickname: "Сохранить",
     saving: "Сохранение...",
@@ -107,7 +107,7 @@ const TEXT = {
     chooseDevice: "Device",
     noDevices: "No paired devices.",
     nicknameTitle: "Device nickname",
-    nicknameHint: "Friends can find your device by nickname for Connect.",
+    nicknameHint: "Friends can find your device by nickname for Connect. Max 15 characters: Latin letters, numbers, dash, dot, or underscore.",
     nicknamePlaceholder: "example alibek-pocket",
     saveNickname: "Save",
     saving: "Saving...",
@@ -140,12 +140,12 @@ const TEXT = {
     refreshing: "Жаңартылуда...",
     chooseDevice: "Құрылғы",
     noDevices: "Байланған құрылғы жоқ.",
-    nicknameTitle: "Құрылғы никнеймі",
-    nicknameHint: "Достар Connect үшін құрылғыңды никнейм арқылы табады.",
+    nicknameTitle: "Құрылғының лақап аты",
+    nicknameHint: "Достар Connect үшін құрылғыңды лақап ат арқылы табады. Ең көбі 15 таңба: латын әріптері, сандар, дефис, нүкте немесе төменгі сызық.",
     nicknamePlaceholder: "мысалы alibek-pocket",
     saveNickname: "Сақтау",
     saving: "Сақталуда...",
-    nicknameSaved: "Никнейм сақталды.",
+    nicknameSaved: "Лақап ат сақталды.",
     connectStatus: "Connect статусы",
     active: "Белсенді",
     inactive: "Белсенді емес",
@@ -153,8 +153,8 @@ const TEXT = {
     members: "Қатысушылар",
     emptyMembers: "Connect қатысушылары әзірге жоқ.",
     inviteTitle: "Дос құрылғысын қосу",
-    inviteHint: "Досыңның құрылғы никнеймін енгіз. Оған сайтта шақыру келеді.",
-    searchPlaceholder: "дос никнеймі",
+    inviteHint: "Досыңның құрылғы лақап атын енгіз. Оған сайтта шақыру келеді.",
+    searchPlaceholder: "дос құрылғысының лақап аты",
     search: "Іздеу",
     sendInvite: "Шақыру жіберу",
     sending: "Жіберілуде...",
@@ -401,6 +401,7 @@ export default function ConnectPage() {
               <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                 <input
                   value={nicknameValue}
+                  maxLength={15}
                   onChange={(e) => setNicknameValue(e.target.value)}
                   placeholder={t.nicknamePlaceholder}
                   className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition placeholder:text-[#6b7280] focus:border-blue-500"
@@ -447,6 +448,7 @@ export default function ConnectPage() {
               <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                 <input
                   value={searchValue}
+                  maxLength={15}
                   onChange={(e) => setSearchValue(e.target.value)}
                   placeholder={t.searchPlaceholder}
                   className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition placeholder:text-[#6b7280] focus:border-blue-500"

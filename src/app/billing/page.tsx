@@ -185,7 +185,7 @@ const TEXT = {
     no: "Нет",
     hasAccess: "Есть доступ",
     nickname: "Никнейм устройства",
-    nicknameHint: "Никнейм нужен для Connect: по нему друзья смогут найти устройство.",
+    nicknameHint: "Никнейм нужен для Connect: по нему друзья смогут найти устройство. Максимум 15 символов: латиница, цифры, дефис, точка или подчёркивание.",
     nicknamePlaceholder: "например alibek-pocket",
     saveNickname: "Сохранить никнейм",
     saving: "Сохранение...",
@@ -249,7 +249,7 @@ const TEXT = {
     no: "No",
     hasAccess: "Has access",
     nickname: "Device nickname",
-    nicknameHint: "Nickname is used for Connect so friends can find this device.",
+    nicknameHint: "Nickname is used for Connect so friends can find this device. Max 15 characters: Latin letters, numbers, dash, dot, or underscore.",
     nicknamePlaceholder: "example alibek-pocket",
     saveNickname: "Save nickname",
     saving: "Saving...",
@@ -312,12 +312,12 @@ const TEXT = {
     yes: "Иә",
     no: "Жоқ",
     hasAccess: "Қолжетім бар",
-    nickname: "Құрылғы никнеймі",
-    nicknameHint: "Никнейм Connect үшін керек: достар құрылғыны осы арқылы табады.",
+    nickname: "Құрылғының лақап аты",
+    nicknameHint: "Connect үшін құрылғының лақап аты керек: достар құрылғыны осы арқылы табады. Ең көбі 15 таңба: латын әріптері, сандар, дефис, нүкте немесе төменгі сызық.",
     nicknamePlaceholder: "мысалы alibek-pocket",
-    saveNickname: "Никнеймді сақтау",
+    saveNickname: "Лақап атты сақтау",
     saving: "Сақталуда...",
-    nicknameSaved: "Никнейм сақталды.",
+    nicknameSaved: "Лақап ат сақталды.",
     connectIncluded: "Connect қосылған",
     requestsIncluded: "Сұраулар қосылған",
     connectOnly: "Тек Connect",
@@ -644,6 +644,7 @@ export default function BillingPage() {
                     <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                       <input
                         value={nicknameValue}
+                        maxLength={15}
                         onChange={(e) => setNicknameValue(e.target.value)}
                         placeholder={t.nicknamePlaceholder}
                         className="w-full rounded-xl border border-[#374151] bg-[#050816] px-4 py-3 text-white outline-none transition placeholder:text-[#6b7280] focus:border-blue-500"

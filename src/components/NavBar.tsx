@@ -33,8 +33,8 @@ const NAV_TEXT = {
   },
   kz: {
     home: "Басты бет",
-    dashboard: "Кабинет",
-    pair: "Байлау",
+    dashboard: "Жеке кабинет",
+    pair: "Құрылғы қосу",
     billing: "Төлем",
     connect: "Connect",
     login: "Кіру",
