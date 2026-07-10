@@ -73,11 +73,11 @@ const TEXT = {
     chooseDevice: "Устройство",
     noDevices: "Нет привязанных устройств.",
     nicknameTitle: "Никнейм устройства",
-    nicknameHint: "По никнейму друзья смогут найти твоё устройство для Connect. Максимум 15 символов: латиница, цифры, дефис, точка или подчёркивание.",
+    nicknameHint: "Никнейм уникален для всей системы: два устройства не могут иметь одинаковый никнейм. Максимум 15 символов: латиница, цифры, дефис, точка или подчёркивание.",
     nicknamePlaceholder: "например alibek-pocket",
     saveNickname: "Сохранить",
     saving: "Сохранение...",
-    nicknameSaved: "Никнейм сохранён.",
+    nicknameSaved: "Никнейм сохранён и закреплён за этим устройством.",
     connectStatus: "Статус Connect",
     active: "Активен",
     inactive: "Не активен",
@@ -107,11 +107,11 @@ const TEXT = {
     chooseDevice: "Device",
     noDevices: "No paired devices.",
     nicknameTitle: "Device nickname",
-    nicknameHint: "Friends can find your device by nickname for Connect. Max 15 characters: Latin letters, numbers, dash, dot, or underscore.",
+    nicknameHint: "The nickname is unique across PocketGPT: two devices cannot use the same nickname. Max 15 characters: Latin letters, numbers, dash, dot, or underscore.",
     nicknamePlaceholder: "example alibek-pocket",
     saveNickname: "Save",
     saving: "Saving...",
-    nicknameSaved: "Nickname saved.",
+    nicknameSaved: "Nickname saved and assigned to this device.",
     connectStatus: "Connect status",
     active: "Active",
     inactive: "Inactive",
@@ -141,11 +141,11 @@ const TEXT = {
     chooseDevice: "Құрылғы",
     noDevices: "Байланған құрылғы жоқ.",
     nicknameTitle: "Құрылғының лақап аты",
-    nicknameHint: "Достар Connect үшін құрылғыңды лақап ат арқылы табады. Ең көбі 15 таңба: латын әріптері, сандар, дефис, нүкте немесе төменгі сызық.",
+    nicknameHint: "Лақап ат бүкіл PocketGPT жүйесінде бірегей: екі құрылғы бірдей атты пайдалана алмайды. Ең көбі 15 таңба: латын әріптері, сандар, дефис, нүкте немесе төменгі сызық.",
     nicknamePlaceholder: "мысалы alibek-pocket",
     saveNickname: "Сақтау",
     saving: "Сақталуда...",
-    nicknameSaved: "Лақап ат сақталды.",
+    nicknameSaved: "Лақап ат сақталып, осы құрылғыға бекітілді.",
     connectStatus: "Connect статусы",
     active: "Белсенді",
     inactive: "Белсенді емес",
@@ -402,7 +402,7 @@ export default function ConnectPage() {
                 <input
                   value={nicknameValue}
                   maxLength={15}
-                  onChange={(e) => setNicknameValue(e.target.value)}
+                  onChange={(e) => setNicknameValue(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))}
                   placeholder={t.nicknamePlaceholder}
                   className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition placeholder:text-[#6b7280] focus:border-blue-500"
                 />
@@ -449,7 +449,7 @@ export default function ConnectPage() {
                 <input
                   value={searchValue}
                   maxLength={15}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  onChange={(e) => setSearchValue(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))}
                   placeholder={t.searchPlaceholder}
                   className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition placeholder:text-[#6b7280] focus:border-blue-500"
                 />
