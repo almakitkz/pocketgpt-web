@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { logout, getToken } from "@/lib/auth";
-import { useEffect, useState } from "react";
-
-type Lang = "ru" | "en" | "kz";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { getToken, logout } from "@/lib/auth";
+import {
+  getSiteLanguage,
+  saveSiteLanguage,
+  SITE_LANGUAGE_EVENT,
+  type SiteLanguage,
+} from "@/lib/site-language";
 
 const NAV_TEXT = {
   ru: {
@@ -15,232 +20,321 @@ const NAV_TEXT = {
     connect: "Connect",
     login: "Войти",
     signup: "Регистрация",
-    logout: "Выйти",
-    menu: "Меню",
-    close: "Закрыть",
+    logout: "Выйти из аккаунта",
+    menu: "Открыть меню",
+    close: "Закрыть меню",
+    language: "Выбрать язык",
+    navigation: "Навигация",
+    account: "Аккаунт",
+    legal: "Документы",
+    terms: "Условия",
+    refund: "Возврат",
   },
   en: {
     home: "Home",
     dashboard: "Dashboard",
-    pair: "Pair",
+    pair: "Pair device",
     billing: "Billing",
     connect: "Connect",
-    login: "Login",
-    signup: "Signup",
-    logout: "Logout",
-    menu: "Menu",
-    close: "Close",
+    login: "Log in",
+    signup: "Create account",
+    logout: "Log out",
+    menu: "Open menu",
+    close: "Close menu",
+    language: "Choose language",
+    navigation: "Navigation",
+    account: "Account",
+    legal: "Documents",
+    terms: "Terms",
+    refund: "Refunds",
   },
   kz: {
     home: "Басты бет",
     dashboard: "Жеке кабинет",
-    pair: "Құрылғы қосу",
+    pair: "Құрылғыны қосу",
     billing: "Төлем",
     connect: "Connect",
     login: "Кіру",
     signup: "Тіркелу",
-    logout: "Шығу",
-    menu: "Мәзір",
-    close: "Жабу",
+    logout: "Аккаунттан шығу",
+    menu: "Мәзірді ашу",
+    close: "Мәзірді жабу",
+    language: "Тілді таңдау",
+    navigation: "Навигация",
+    account: "Аккаунт",
+    legal: "Құжаттар",
+    terms: "Шарттар",
+    refund: "Қайтару",
   },
 } as const;
 
-function normalizeLang(value: string | null): Lang {
-  if (value === "en") return "en";
-  if (value === "kz" || value === "kk") return "kz";
-  return "ru";
+const LANGUAGES: { code: SiteLanguage; label: string; short: string }[] = [
+  { code: "ru", label: "Русский", short: "RU" },
+  { code: "en", label: "English", short: "EN" },
+  { code: "kz", label: "Қазақша", short: "KZ" },
+];
+
+type NavIconName = "home" | "dashboard" | "pair" | "billing" | "connect" | "login" | "signup";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: NavIconName;
+};
+
+function MenuIcon({ open = false }: { open?: boolean }) {
+  return open ? (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+      <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  ) : (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+      <path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
 }
 
-function getSavedLang(): Lang {
-  if (typeof window === "undefined") return "ru";
-  return normalizeLang(localStorage.getItem("site_lang") || localStorage.getItem("lang"));
+function GlobeIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M3.9 12h16.2M12 3.75c2.2 2.25 3.3 5 3.3 8.25S14.2 18 12 20.25C9.8 18 8.7 15.25 8.7 12S9.8 6 12 3.75Z" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+      <path d="M10 5H6.8A1.8 1.8 0 0 0 5 6.8v10.4A1.8 1.8 0 0 0 6.8 19H10M14.5 8l4 4-4 4M18.2 12H9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function NavIcon({ name }: { name: NavIconName }) {
+  const common = {
+    stroke: "currentColor",
+    strokeWidth: 1.6,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+      {name === "home" ? <path d="m4.5 10 7.5-6 7.5 6v8.2a1.3 1.3 0 0 1-1.3 1.3H5.8a1.3 1.3 0 0 1-1.3-1.3V10ZM9.2 19.5v-5.7h5.6v5.7" {...common} /> : null}
+      {name === "dashboard" ? <><rect x="4" y="4" width="6.5" height="6.5" rx="1.2" {...common} /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.2" {...common} /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.2" {...common} /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.2" {...common} /></> : null}
+      {name === "pair" ? <><path d="M8.3 15.7 6.6 17.4a3 3 0 0 1-4.2-4.2l3-3a3 3 0 0 1 4.2 0" {...common} /><path d="m15.7 8.3 1.7-1.7a3 3 0 0 1 4.2 4.2l-3 3a3 3 0 0 1-4.2 0M8.5 15.5l7-7" {...common} /></> : null}
+      {name === "billing" ? <><rect x="3.5" y="6" width="17" height="12" rx="2" {...common} /><path d="M3.5 10h17M7 14h3" {...common} /></> : null}
+      {name === "connect" ? <><circle cx="12" cy="5.5" r="2.2" {...common} /><circle cx="5.5" cy="18" r="2.2" {...common} /><circle cx="18.5" cy="18" r="2.2" {...common} /><path d="m10.7 7.3-4 8.5M13.3 7.3l4 8.5M7.7 18h8.6" {...common} /></> : null}
+      {name === "login" ? <><path d="M10 5H6.8A1.8 1.8 0 0 0 5 6.8v10.4A1.8 1.8 0 0 0 6.8 19H10M14.5 8l4 4-4 4M18.2 12H9" {...common} /></> : null}
+      {name === "signup" ? <><circle cx="9" cy="8" r="3" {...common} /><path d="M3.8 19c.5-3.4 2.2-5.2 5.2-5.2s4.7 1.8 5.2 5.2M17.5 8v6M14.5 11h6" {...common} /></> : null}
+    </svg>
+  );
 }
 
 export default function NavBar() {
+  const pathname = usePathname();
+  const languageRef = useRef<HTMLDivElement>(null);
   const [isAuthed, setIsAuthed] = useState(false);
   const [ready, setReady] = useState(false);
-  const [lang, setLang] = useState<Lang>("ru");
+  const [lang, setLang] = useState<SiteLanguage>("ru");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
 
   useEffect(() => {
-    setIsAuthed(!!getToken());
-    setLang(getSavedLang());
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) setMenuOpen(false);
+    const syncState = () => {
+      setIsAuthed(Boolean(getToken()));
+      setLang(getSiteLanguage());
+      setReady(true);
     };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+
+    syncState();
+    window.addEventListener(SITE_LANGUAGE_EVENT, syncState);
+    window.addEventListener("storage", syncState);
+
+    return () => {
+      window.removeEventListener(SITE_LANGUAGE_EVENT, syncState);
+      window.removeEventListener("storage", syncState);
+    };
   }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        setLanguageOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (languageRef.current && !languageRef.current.contains(event.target as Node)) {
+        setLanguageOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
+
+  const t = NAV_TEXT[lang];
+
+  const mainItems: NavItem[] = isAuthed
+    ? [
+        { href: "/", label: t.home, icon: "home" },
+        { href: "/dashboard", label: t.dashboard, icon: "dashboard" },
+        { href: "/pair", label: t.pair, icon: "pair" },
+        { href: "/billing", label: t.billing, icon: "billing" },
+        { href: "/connect", label: t.connect, icon: "connect" },
+      ]
+    : [
+        { href: "/", label: t.home, icon: "home" },
+        { href: "/login", label: t.login, icon: "login" },
+        { href: "/signup", label: t.signup, icon: "signup" },
+      ];
 
   function handleLogout() {
     logout();
+    setMenuOpen(false);
     window.location.href = "/login";
   }
 
-  function changeLang(nextLang: Lang) {
-    setLang(nextLang);
-    localStorage.setItem("site_lang", nextLang);
-    localStorage.setItem("lang", nextLang);
-    window.dispatchEvent(new Event("site-language-change"));
+  function changeLanguage(nextLanguage: SiteLanguage) {
+    saveSiteLanguage(nextLanguage);
+    setLang(nextLanguage);
+    setLanguageOpen(false);
   }
 
-  const t = NAV_TEXT[lang];
-  const langButtons: { code: Lang; label: string }[] = [
-    { code: "ru", label: "RU" },
-    { code: "en", label: "ENG" },
-    { code: "kz", label: "KZ" },
-  ];
-
-  const authedLinks = (
-    <>
-      <Link href="/dashboard" className="text-sm text-white/90 hover:text-white">
-        {t.dashboard}
-      </Link>
-      <Link href="/pair" className="text-sm text-white/90 hover:text-white">
-        {t.pair}
-      </Link>
-      <Link href="/billing" className="text-sm text-white/90 hover:text-white">
-        {t.billing}
-      </Link>
-      <Link href="/connect" className="text-sm text-white/90 hover:text-white">
-        {t.connect}
-      </Link>
-      <button
-        type="button"
-        onClick={handleLogout}
-        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
-      >
-        {t.logout}
-      </button>
-    </>
-  );
-
   return (
-    <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b0f]/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
-        <Link
-          href="/"
-          className="min-w-0 shrink text-lg font-bold tracking-tight text-white sm:text-xl"
-          onClick={() => setMenuOpen(false)}
-        >
-          PocketGPT
-        </Link>
-
-        <div className="hidden min-w-0 items-center gap-3 md:flex">
-          <div className="flex overflow-hidden rounded-full border border-zinc-800">
-            {langButtons.map((item) => (
-              <button
-                key={item.code}
-                type="button"
-                onClick={() => changeLang(item.code)}
-                className={`px-3 py-2 text-sm ${
-                  lang === item.code ? "bg-blue-600 text-white" : "text-white hover:bg-white/5"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          <Link href="/" className="text-sm text-white/90 hover:text-white">
-            {t.home}
-          </Link>
-
-          {ready && isAuthed ? authedLinks : null}
-
-          {ready && !isAuthed ? (
-            <>
-              <Link href="/login" className="text-sm text-white/90 hover:text-white">
-                {t.login}
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
-              >
-                {t.signup}
-              </Link>
-            </>
-          ) : null}
-        </div>
-
+    <header className="pg-header">
+      <div className="pg-header-inner">
         <button
           type="button"
+          className="pg-icon-button"
           aria-label={menuOpen ? t.close : t.menu}
           aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-          className="rounded-xl border border-white/10 px-3 py-2 text-sm text-white md:hidden"
+          aria-controls="pocketgpt-navigation"
+          onClick={() => {
+            setMenuOpen((value) => !value);
+            setLanguageOpen(false);
+          }}
         >
-          {menuOpen ? "✕" : "☰"}
+          <MenuIcon open={menuOpen} />
         </button>
-      </div>
 
-      {menuOpen ? (
-        <div className="border-t border-white/10 bg-[#0b0b0f] md:hidden">
-          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6">
-            <div className="flex w-full overflow-hidden rounded-full border border-zinc-800">
-              {langButtons.map((item) => (
+        <div className="pg-header-mark" aria-label="PocketGPT">
+          <span className="pg-header-mark-dot" />
+          <span>POCKETGPT</span>
+          <span className="pg-header-mark-index">02</span>
+        </div>
+
+        <div className="pg-language" ref={languageRef}>
+          <button
+            type="button"
+            className="pg-icon-button"
+            aria-label={t.language}
+            aria-expanded={languageOpen}
+            aria-controls="pocketgpt-language-menu"
+            onClick={() => {
+              setLanguageOpen((value) => !value);
+              setMenuOpen(false);
+            }}
+          >
+            <GlobeIcon />
+          </button>
+
+          {languageOpen ? (
+            <div id="pocketgpt-language-menu" className="pg-language-menu" role="menu">
+              {LANGUAGES.map((language) => (
                 <button
-                  key={item.code}
+                  key={language.code}
                   type="button"
-                  onClick={() => changeLang(item.code)}
-                  className={`flex-1 px-3 py-2 text-sm ${
-                    lang === item.code ? "bg-blue-600 text-white" : "text-white hover:bg-white/5"
-                  }`}
+                  role="menuitemradio"
+                  aria-checked={lang === language.code}
+                  className={`pg-language-option ${lang === language.code ? "is-active" : ""}`}
+                  onClick={() => changeLanguage(language.code)}
                 >
-                  {item.label}
+                  <span>{language.label}</span>
+                  <span className="pg-language-code">{language.short}</span>
                 </button>
               ))}
             </div>
+          ) : null}
+        </div>
+      </div>
 
-            <Link
-              href="/"
-              className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white"
-              onClick={() => setMenuOpen(false)}
-            >
-              {t.home}
-            </Link>
+      <div
+        className={`pg-drawer-overlay ${menuOpen ? "is-open" : ""}`}
+        aria-hidden={!menuOpen}
+        onClick={() => setMenuOpen(false)}
+      />
 
-            {ready && isAuthed ? (
-              <>
-                <Link href="/dashboard" className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
-                  {t.dashboard}
-                </Link>
-                <Link href="/pair" className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
-                  {t.pair}
-                </Link>
-                <Link href="/billing" className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
-                  {t.billing}
-                </Link>
-                <Link href="/connect" className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
-                  {t.connect}
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500"
-                >
-                  {t.logout}
-                </button>
-              </>
-            ) : null}
+      <aside
+        id="pocketgpt-navigation"
+        className={`pg-drawer ${menuOpen ? "is-open" : ""}`}
+        aria-hidden={!menuOpen}
+        aria-label={t.navigation}
+      >
+        <div className="pg-drawer-head">
+          <div>
+            <div className="pg-drawer-brand">PocketGPT</div>
+            <div className="pg-drawer-caption">VOICE AI DEVICE / 2.0</div>
+          </div>
+          <button type="button" className="pg-icon-button pg-icon-button-quiet" aria-label={t.close} onClick={() => setMenuOpen(false)}>
+            <MenuIcon open />
+          </button>
+        </div>
 
-            {ready && !isAuthed ? (
-              <>
-                <Link href="/login" className="rounded-xl px-3 py-3 text-white/90 hover:bg-white/5 hover:text-white" onClick={() => setMenuOpen(false)}>
-                  {t.login}
-                </Link>
-                <Link href="/signup" className="w-full rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-blue-500" onClick={() => setMenuOpen(false)}>
-                  {t.signup}
-                </Link>
-              </>
-            ) : null}
+        <div className="pg-drawer-rule" />
+        <div className="pg-drawer-section-label">{ready && isAuthed ? t.account : t.navigation}</div>
+
+        <nav className="pg-drawer-nav">
+          {ready
+            ? mainItems.map((item) => {
+                const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`pg-drawer-link ${active ? "is-active" : ""}`}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span className="pg-drawer-link-icon"><NavIcon name={item.icon} /></span>
+                    <span>{item.label}</span>
+                    <span className="pg-drawer-link-index">0{mainItems.indexOf(item) + 1}</span>
+                  </Link>
+                );
+              })
+            : <div className="pg-drawer-skeleton" />}
+        </nav>
+
+        <div className="pg-drawer-spacer" />
+
+        {ready && isAuthed ? (
+          <button type="button" className="pg-drawer-logout" onClick={handleLogout}>
+            <span className="pg-drawer-link-icon"><LogoutIcon /></span>
+            <span>{t.logout}</span>
+          </button>
+        ) : null}
+
+        <div className="pg-drawer-footer">
+          <span>{t.legal}</span>
+          <div>
+            <Link href="/terms" onClick={() => setMenuOpen(false)}>{t.terms}</Link>
+            <Link href="/refund-policy" onClick={() => setMenuOpen(false)}>{t.refund}</Link>
           </div>
         </div>
-      ) : null}
-    </nav>
+      </aside>
+    </header>
   );
 }
