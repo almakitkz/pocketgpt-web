@@ -1,12 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+import Link from "next/link";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import {
+  PayPalButtons,
+  PayPalScriptProvider,
+} from "@paypal/react-paypal-js";
 import { apiFetch } from "@/lib/api";
-import { getToken, getUser } from "@/lib/auth";
+import { getToken } from "@/lib/auth";
+import {
+  getSiteLanguage,
+  SITE_LANGUAGE_EVENT,
+  type SiteLanguage,
+} from "@/lib/site-language";
 
-type Lang = "ru" | "en" | "kz";
 type PlanKind = "requests" | "connect" | "bundle" | string;
+type PlanCategory = "requests" | "connect" | "bundle";
 
 type Plan = {
   id: string;
@@ -78,8 +94,6 @@ type DeviceItem = {
     trialEnd: string | null;
     currentPeriodStart?: string | null;
     currentPeriodEnd: string | null;
-    stripeSubscriptionId?: string | null;
-    stripePriceId?: string | null;
     createdAt?: string | null;
     updatedAt?: string | null;
   };
@@ -125,270 +139,357 @@ type CreateOrderResponse = {
   plan: Plan;
 };
 
-type LocalUser = {
-  id: string;
-  email: string;
-};
-
 const TEXT = {
   ru: {
-    loading: "Загрузка...",
-    title: "Оплата и подписки",
-    subtitle: "Выбери устройство, купи пакет запросов или подключи Connect для общей истории.",
-    backDashboard: "Назад в кабинет",
-    chooseDevice: "Устройство",
-    choosePlan: "План",
-    requestPlans: "Пакеты запросов",
-    connectPlans: "Connect и комплекты",
-    requestPlansHint: "Обычные планы для голосовых запросов устройства.",
-    connectPlansHint: "Общая история, добавление друзей и совместное использование.",
-    noDevices: "У тебя пока нет привязанных устройств.",
-    noPlans: "Планы пока недоступны.",
-    currentPlan: "Текущий план",
-    noActivePlan: "Нет активного плана",
-    activeUntil: "Активно до",
-    requestLimit: "Лимит",
+    eyebrow: "ОПЛАТА / ДОСТУП",
+    title: "Оплата",
+    subtitle: "Выбери устройство и подходящий тариф.",
+    device: "Устройство",
+    selectDevice: "Выбери устройство",
+    noDevices: "Нет привязанных устройств",
+    pairDevice: "Привязать устройство",
+    currentStatus: "Текущий статус",
+    active: "Активен",
+    inactive: "Неактивен",
+    access: "Доступ",
+    plan: "План",
+    trial: "Пробный период",
+    promo: "Промо",
+    noPlan: "Нет активного плана",
+    requestsLeft: "Осталось запросов",
+    usedRequests: "Использовано",
+    validUntil: "Действует до",
+    noExpiry: "Без срока",
+    unlimited: "Без лимита",
+    connect: "Connect",
+    plans: "Тарифы",
+    regular: "Обычные",
+    connectOnly: "Connect",
+    bundles: "Комплекты",
     requests: "запросов",
-    unlimited: "без лимита",
-    buyNow: "Оплата через PayPal",
-    planSelected: "Выбранный план",
-    deviceSelected: "Выбранное устройство",
-    promoTitle: "Промокод",
-    promoSubtitle: "Для конструкторов: один код даёт 500 запросов без срока действия.",
-    promoPlaceholder: "Например: PKT-7F4K-92QM",
-    redeemPromo: "Активировать промокод",
-    redeeming: "Активация...",
-    promoSuccess: "Промокод успешно активирован.",
-    promoErrorNoDevice: "Сначала выбери устройство.",
-    promoErrorEmpty: "Введи промокод.",
-    promoBalance: "Промо-баланс",
-    promoRemaining: "Осталось промо-запросов",
-    promoUsed: "Потрачено промо-запросов",
-    promoTotal: "Всего промо-запросов",
-    promoActive: "Промо активно",
-    promoInactive: "Промо неактивно",
-    activeCode: "Активный код",
-    grantsCount: "Активированных кодов",
-    paymentHistory: "История оплат",
-    noPayments: "История оплат пока пуста.",
-    amount: "Сумма",
-    provider: "Провайдер",
-    paidAt: "Оплачено",
-    status: "Статус",
     days: "дней",
-    openPayPal: "Кнопка PayPal появится ниже после выбора устройства и плана.",
-    paypalMissing: "NEXT_PUBLIC_PAYPAL_CLIENT_ID не настроен на фронтенде.",
-    refreshing: "Обновление...",
-    refresh: "Обновить",
-    paired: "Привязано",
-    yes: "Да",
-    no: "Нет",
-    hasAccess: "Есть доступ",
-    nickname: "Никнейм устройства",
-    nicknameHint: "Никнейм нужен для Connect: по нему друзья смогут найти устройство. Максимум 15 символов: латиница, цифры, дефис, точка или подчёркивание.",
-    nicknamePlaceholder: "например alibek-pocket",
-    saveNickname: "Сохранить никнейм",
-    saving: "Сохранение...",
-    nicknameSaved: "Никнейм сохранён.",
-    connectIncluded: "Connect включён",
-    requestsIncluded: "Запросы включены",
-    connectOnly: "Только Connect",
-    cleanState: "После окончания подписка станет неактивной, а ты сможешь купить новую.",
+    includesConnect: "Connect включён",
+    requestsOnly: "Пакет запросов",
+    choose: "Выбрать",
+    selected: "Выбран",
+    noPlans: "Тарифы пока недоступны",
+    order: "К оплате",
+    chosenDevice: "Устройство",
+    chosenPlan: "Тариф",
+    price: "Стоимость",
+    pay: "Оплатить через PayPal",
+    selectPlanFirst: "Выбери тариф",
+    paypalMissing: "PayPal пока не настроен",
+    paymentSuccess: "Оплата подтверждена",
+    paymentFailed: "Не удалось завершить оплату",
+    promoCode: "Промокод",
+    promoPlaceholder: "Введи код",
+    activate: "Активировать",
+    activating: "Проверяем…",
+    promoSuccess: "Промокод активирован",
+    promoEmpty: "Введи промокод",
+    promoBalance: "Промо-баланс",
+    promoCodes: "Активировано кодов",
+    history: "История оплат",
+    hideHistory: "Скрыть историю",
+    emptyHistory: "Оплат пока нет",
+    paid: "Оплачено",
+    pending: "В обработке",
+    failed: "Ошибка",
+    refunded: "Возврат",
+    loadFailed: "Не удалось загрузить данные",
+    tryAgain: "Повторить",
+    uid: "UID",
   },
   en: {
-    loading: "Loading...",
-    title: "Billing and subscriptions",
-    subtitle: "Select a device, buy request credits, or enable Connect for shared history.",
-    backDashboard: "Back to dashboard",
-    chooseDevice: "Device",
-    choosePlan: "Plan",
-    requestPlans: "Request plans",
-    connectPlans: "Connect and bundles",
-    requestPlansHint: "Regular plans for device voice requests.",
-    connectPlansHint: "Shared history, friend invites, and collaborative use.",
-    noDevices: "You do not have any paired devices yet.",
-    noPlans: "No plans are available right now.",
-    currentPlan: "Current plan",
-    noActivePlan: "No active plan",
-    activeUntil: "Active until",
-    requestLimit: "Request limit",
+    eyebrow: "BILLING / ACCESS",
+    title: "Billing",
+    subtitle: "Choose a device and the right plan.",
+    device: "Device",
+    selectDevice: "Select a device",
+    noDevices: "No paired devices",
+    pairDevice: "Pair a device",
+    currentStatus: "Current status",
+    active: "Active",
+    inactive: "Inactive",
+    access: "Access",
+    plan: "Plan",
+    trial: "Trial period",
+    promo: "Promo",
+    noPlan: "No active plan",
+    requestsLeft: "Requests left",
+    usedRequests: "Used",
+    validUntil: "Valid until",
+    noExpiry: "No expiry",
+    unlimited: "Unlimited",
+    connect: "Connect",
+    plans: "Plans",
+    regular: "Regular",
+    connectOnly: "Connect",
+    bundles: "Bundles",
     requests: "requests",
-    unlimited: "unlimited",
-    buyNow: "Pay with PayPal",
-    planSelected: "Selected plan",
-    deviceSelected: "Selected device",
-    promoTitle: "Promo code",
-    promoSubtitle: "For constructor kits: one code gives 500 requests with no expiration date.",
-    promoPlaceholder: "Example: PKT-7F4K-92QM",
-    redeemPromo: "Redeem promo code",
-    redeeming: "Redeeming...",
-    promoSuccess: "Promo code activated successfully.",
-    promoErrorNoDevice: "Please select a device first.",
-    promoErrorEmpty: "Please enter a promo code.",
-    promoBalance: "Promo balance",
-    promoRemaining: "Remaining promo requests",
-    promoUsed: "Used promo requests",
-    promoTotal: "Total promo requests",
-    promoActive: "Promo active",
-    promoInactive: "Promo inactive",
-    activeCode: "Active code",
-    grantsCount: "Redeemed codes",
-    paymentHistory: "Payment history",
-    noPayments: "Payment history is empty.",
-    amount: "Amount",
-    provider: "Provider",
-    paidAt: "Paid at",
-    status: "Status",
     days: "days",
-    openPayPal: "The PayPal button will appear after selecting a device and a plan.",
-    paypalMissing: "NEXT_PUBLIC_PAYPAL_CLIENT_ID is not configured on the frontend.",
-    refreshing: "Refreshing...",
-    refresh: "Refresh",
-    paired: "Paired",
-    yes: "Yes",
-    no: "No",
-    hasAccess: "Has access",
-    nickname: "Device nickname",
-    nicknameHint: "Nickname is used for Connect so friends can find this device. Max 15 characters: Latin letters, numbers, dash, dot, or underscore.",
-    nicknamePlaceholder: "example alibek-pocket",
-    saveNickname: "Save nickname",
-    saving: "Saving...",
-    nicknameSaved: "Nickname saved.",
-    connectIncluded: "Connect included",
-    requestsIncluded: "Requests included",
-    connectOnly: "Connect only",
-    cleanState: "When a subscription expires, it becomes inactive and you can buy a new one.",
+    includesConnect: "Connect included",
+    requestsOnly: "Request package",
+    choose: "Choose",
+    selected: "Selected",
+    noPlans: "Plans are not available yet",
+    order: "Order",
+    chosenDevice: "Device",
+    chosenPlan: "Plan",
+    price: "Price",
+    pay: "Pay with PayPal",
+    selectPlanFirst: "Select a plan",
+    paypalMissing: "PayPal is not configured yet",
+    paymentSuccess: "Payment confirmed",
+    paymentFailed: "Could not complete the payment",
+    promoCode: "Promo code",
+    promoPlaceholder: "Enter code",
+    activate: "Activate",
+    activating: "Checking…",
+    promoSuccess: "Promo code activated",
+    promoEmpty: "Enter a promo code",
+    promoBalance: "Promo balance",
+    promoCodes: "Codes activated",
+    history: "Payment history",
+    hideHistory: "Hide history",
+    emptyHistory: "No payments yet",
+    paid: "Paid",
+    pending: "Pending",
+    failed: "Failed",
+    refunded: "Refunded",
+    loadFailed: "Could not load data",
+    tryAgain: "Try again",
+    uid: "UID",
   },
   kz: {
-    loading: "Жүктелуде...",
-    title: "Төлем және жазылымдар",
-    subtitle: "Құрылғыны таңда, сұрау пакетін ал немесе ортақ тарих үшін Connect қос.",
-    backDashboard: "Кабинетке қайту",
-    chooseDevice: "Құрылғы",
-    choosePlan: "Жоспар",
-    requestPlans: "Сұрау пакеттері",
-    connectPlans: "Connect және жиынтықтар",
-    requestPlansHint: "Құрылғыдағы дауыс сұрауларына арналған жоспарлар.",
-    connectPlansHint: "Ортақ тарих, дос қосу және бірге қолдану.",
-    noDevices: "Әзірге байланыстырылған құрылғы жоқ.",
-    noPlans: "Жоспарлар әзірге қолжетімсіз.",
-    currentPlan: "Қазіргі жоспар",
-    noActivePlan: "Белсенді жоспар жоқ",
-    activeUntil: "Белсенді мерзімі",
-    requestLimit: "Лимит",
+    eyebrow: "ТӨЛЕМ / ҚОЛЖЕТІМ",
+    title: "Төлем",
+    subtitle: "Құрылғы мен қолайлы тарифті таңда.",
+    device: "Құрылғы",
+    selectDevice: "Құрылғыны таңда",
+    noDevices: "Байланыстырылған құрылғы жоқ",
+    pairDevice: "Құрылғыны байланыстыру",
+    currentStatus: "Қазіргі күй",
+    active: "Белсенді",
+    inactive: "Белсенді емес",
+    access: "Қолжетім",
+    plan: "Тариф",
+    trial: "Сынақ мерзімі",
+    promo: "Промо",
+    noPlan: "Белсенді тариф жоқ",
+    requestsLeft: "Қалған сұрау",
+    usedRequests: "Қолданылды",
+    validUntil: "Мерзімі",
+    noExpiry: "Мерзімсіз",
+    unlimited: "Шектеусіз",
+    connect: "Connect",
+    plans: "Тарифтер",
+    regular: "Қалыпты",
+    connectOnly: "Connect",
+    bundles: "Жиынтықтар",
     requests: "сұрау",
-    unlimited: "лимитсіз",
-    buyNow: "PayPal арқылы төлеу",
-    planSelected: "Таңдалған жоспар",
-    deviceSelected: "Таңдалған құрылғы",
-    promoTitle: "Промокод",
-    promoSubtitle: "Конструкторларға: бір код мерзімсіз 500 сұрау береді.",
-    promoPlaceholder: "Мысалы: PKT-7F4K-92QM",
-    redeemPromo: "Промокодты қосу",
-    redeeming: "Қосылуда...",
-    promoSuccess: "Промокод сәтті қосылды.",
-    promoErrorNoDevice: "Алдымен құрылғыны таңда.",
-    promoErrorEmpty: "Промокод енгіз.",
-    promoBalance: "Промо-баланс",
-    promoRemaining: "Қалған промо-сұрау",
-    promoUsed: "Жұмсалған промо-сұрау",
-    promoTotal: "Барлық промо-сұрау",
-    promoActive: "Промо белсенді",
-    promoInactive: "Промо белсенді емес",
-    activeCode: "Белсенді код",
-    grantsCount: "Қосылған кодтар",
-    paymentHistory: "Төлем тарихы",
-    noPayments: "Төлем тарихы бос.",
-    amount: "Сома",
-    provider: "Провайдер",
-    paidAt: "Төленді",
-    status: "Статус",
     days: "күн",
-    openPayPal: "Құрылғы мен жоспар таңдалса, PayPal батырмасы шығады.",
-    paypalMissing: "NEXT_PUBLIC_PAYPAL_CLIENT_ID фронтендте бапталмаған.",
-    refreshing: "Жаңартылуда...",
-    refresh: "Жаңарту",
-    paired: "Байланған",
-    yes: "Иә",
-    no: "Жоқ",
-    hasAccess: "Қолжетім бар",
-    nickname: "Құрылғының лақап аты",
-    nicknameHint: "Connect үшін құрылғының лақап аты керек: достар құрылғыны осы арқылы табады. Ең көбі 15 таңба: латын әріптері, сандар, дефис, нүкте немесе төменгі сызық.",
-    nicknamePlaceholder: "мысалы alibek-pocket",
-    saveNickname: "Лақап атты сақтау",
-    saving: "Сақталуда...",
-    nicknameSaved: "Лақап ат сақталды.",
-    connectIncluded: "Connect қосылған",
-    requestsIncluded: "Сұраулар қосылған",
-    connectOnly: "Тек Connect",
-    cleanState: "Жазылым аяқталса, белсенді емес болып, жаңасын сатып ала аласың.",
+    includesConnect: "Connect қосылған",
+    requestsOnly: "Сұрау пакеті",
+    choose: "Таңдау",
+    selected: "Таңдалды",
+    noPlans: "Тарифтер әзірге қолжетімсіз",
+    order: "Төлем",
+    chosenDevice: "Құрылғы",
+    chosenPlan: "Тариф",
+    price: "Бағасы",
+    pay: "PayPal арқылы төлеу",
+    selectPlanFirst: "Тарифті таңда",
+    paypalMissing: "PayPal әзірге бапталмаған",
+    paymentSuccess: "Төлем расталды",
+    paymentFailed: "Төлемді аяқтау мүмкін болмады",
+    promoCode: "Промокод",
+    promoPlaceholder: "Кодты енгіз",
+    activate: "Қосу",
+    activating: "Тексерілуде…",
+    promoSuccess: "Промокод қосылды",
+    promoEmpty: "Промокодты енгіз",
+    promoBalance: "Промо-баланс",
+    promoCodes: "Қосылған кодтар",
+    history: "Төлем тарихы",
+    hideHistory: "Тарихты жасыру",
+    emptyHistory: "Төлемдер әлі жоқ",
+    paid: "Төленді",
+    pending: "Өңделуде",
+    failed: "Қате",
+    refunded: "Қайтарылды",
+    loadFailed: "Деректерді жүктеу мүмкін болмады",
+    tryAgain: "Қайталау",
+    uid: "UID",
   },
 } as const;
 
-function normalizeLang(value: string | null): Lang {
-  if (value === "en") return "en";
-  if (value === "kz" || value === "kk") return "kz";
-  return "ru";
+type BillingText = (typeof TEXT)[SiteLanguage];
+
+function Spinner() {
+  return <span className="pg-spinner" aria-hidden="true" />;
 }
 
-function getLang(): Lang {
-  if (typeof window === "undefined") return "ru";
-  return normalizeLang(localStorage.getItem("site_lang") || localStorage.getItem("lang"));
+function ChevronIcon({ open = false }: { open?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={open ? "is-open" : ""}
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <path
+        d="m7.5 9.5 4.5 4.5 4.5-4.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
-function formatDate(value: string | null | undefined, lang: Lang): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  const locale = lang === "en" ? "en-US" : lang === "kz" ? "kk-KZ" : "ru-RU";
-  return date.toLocaleString(locale);
+function CardCheckIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+      <path
+        d="m6.5 12.5 3.2 3.2 7.8-8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
-function formatRequestLimit(value: number | null | undefined, lang: Lang, t: (typeof TEXT)[Lang]) {
-  if (value === null || value === undefined || value <= 0) return t.unlimited;
-  return `${value} ${TEXT[lang].requests}`;
-}
-
-function planKind(plan: Plan): PlanKind {
-  if (plan.kind) return plan.kind;
+function planKind(plan: Plan): PlanCategory {
+  const kind = (plan.kind || "").toLowerCase();
+  if (kind === "connect") return "connect";
+  if (kind === "bundle") return "bundle";
   if (plan.connectIncluded) return "bundle";
   return "requests";
 }
 
-function planBadge(plan: Plan, t: (typeof TEXT)[Lang]) {
-  const kind = planKind(plan);
-  if (kind === "connect") return t.connectOnly;
-  if (kind === "bundle" || plan.connectIncluded) return t.connectIncluded;
-  return t.requestsIncluded;
+function localizedPlanName(name: string | null | undefined, lang: SiteLanguage) {
+  if (!name) return "—";
+  const normalized = name.trim().toLowerCase().replace(/\s+/g, " ");
+  const names: Record<string, Record<SiteLanguage, string>> = {
+    basic: { ru: "Базовый", en: "Basic", kz: "Негізгі" },
+    standard: { ru: "Стандарт", en: "Standard", kz: "Стандарт" },
+    connect: { ru: "Connect", en: "Connect", kz: "Connect" },
+    "basic + connect": {
+      ru: "Базовый + Connect",
+      en: "Basic + Connect",
+      kz: "Негізгі + Connect",
+    },
+    "standard + connect": {
+      ru: "Стандарт + Connect",
+      en: "Standard + Connect",
+      kz: "Стандарт + Connect",
+    },
+  };
+  return names[normalized]?.[lang] || name;
+}
+
+function formatDate(value: string | null | undefined, lang: SiteLanguage) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const locale = lang === "en" ? "en-US" : lang === "kz" ? "kk-KZ" : "ru-RU";
+  return date.toLocaleDateString(locale, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatNumber(value: number | null | undefined, lang: SiteLanguage) {
+  if (value === null || value === undefined) return "—";
+  const locale = lang === "en" ? "en-US" : lang === "kz" ? "kk-KZ" : "ru-RU";
+  return new Intl.NumberFormat(locale).format(value);
+}
+
+function deviceName(item: DeviceItem | null) {
+  if (!item) return "—";
+  return item.device.nickname || item.device.name || "PocketGPT";
+}
+
+function billingErrorMessage(error: unknown, lang: SiteLanguage) {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  const t = TEXT[lang];
+
+  if (
+    message.includes("promo") &&
+    (message.includes("used") || message.includes("redeemed") || message.includes("already"))
+  ) {
+    return lang === "en"
+      ? "This promo code has already been used"
+      : lang === "kz"
+        ? "Бұл промокод бұрын қолданылған"
+        : "Этот промокод уже использован";
+  }
+  if (message.includes("promo") && (message.includes("not found") || message.includes("invalid"))) {
+    return lang === "en"
+      ? "Promo code not found"
+      : lang === "kz"
+        ? "Промокод табылмады"
+        : "Промокод не найден";
+  }
+  if (message.includes("device") && message.includes("not found")) {
+    return lang === "en"
+      ? "Device not found"
+      : lang === "kz"
+        ? "Құрылғы табылмады"
+        : "Устройство не найдено";
+  }
+  return t.loadFailed;
+}
+
+function paymentStatus(status: string, t: BillingText) {
+  const normalized = status.toLowerCase();
+  if (["paid", "completed", "captured", "success", "succeeded"].includes(normalized)) {
+    return { label: t.paid, kind: "success" };
+  }
+  if (["failed", "cancelled", "canceled", "denied"].includes(normalized)) {
+    return { label: t.failed, kind: "danger" };
+  }
+  if (["refunded", "refund"].includes(normalized)) {
+    return { label: t.refunded, kind: "neutral" };
+  }
+  return { label: t.pending, kind: "pending" };
 }
 
 export default function BillingPage() {
-  const [lang, setLang] = useState<Lang>("ru");
+  const [lang, setLang] = useState<SiteLanguage>("ru");
   const t = TEXT[lang];
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [softLoading, setSoftLoading] = useState(false);
   const [errorText, setErrorText] = useState("");
-  const [user, setUser] = useState<LocalUser | null>(null);
   const [devices, setDevices] = useState<DeviceItem[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [category, setCategory] = useState<PlanCategory>("requests");
   const [promoCode, setPromoCode] = useState("");
   const [promoMessage, setPromoMessage] = useState("");
   const [promoError, setPromoError] = useState("");
   const [redeemingPromo, setRedeemingPromo] = useState(false);
   const [paypalError, setPaypalError] = useState("");
   const [captureMessage, setCaptureMessage] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const lastLoadedAt = useRef(0);
 
   useEffect(() => {
-    const updateLang = () => setLang(getLang());
-    updateLang();
-    window.addEventListener("site-language-change", updateLang);
-    return () => window.removeEventListener("site-language-change", updateLang);
+    const updateLanguage = () => setLang(getSiteLanguage());
+    updateLanguage();
+    window.addEventListener(SITE_LANGUAGE_EVENT, updateLanguage);
+    return () => window.removeEventListener(SITE_LANGUAGE_EVENT, updateLanguage);
   }, []);
 
   const pairedDevices = useMemo(
@@ -397,8 +498,8 @@ export default function BillingPage() {
   );
 
   const selectedDevice = useMemo(
-    () => devices.find((item) => item.device.id === selectedDeviceId) || null,
-    [devices, selectedDeviceId]
+    () => pairedDevices.find((item) => item.device.id === selectedDeviceId) || null,
+    [pairedDevices, selectedDeviceId]
   );
 
   const selectedPlan = useMemo(
@@ -406,359 +507,591 @@ export default function BillingPage() {
     [plans, selectedPlanId]
   );
 
-  const requestPlans = useMemo(
-    () => plans.filter((plan) => planKind(plan) === "requests"),
+  const categorizedPlans = useMemo(() => {
+    return plans
+      .filter((plan) => plan.isActive !== false)
+      .filter((plan) => planKind(plan) === category)
+      .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999));
+  }, [plans, category]);
+
+  const categoryCounts = useMemo(
+    () => ({
+      requests: plans.filter((plan) => plan.isActive !== false && planKind(plan) === "requests").length,
+      connect: plans.filter((plan) => plan.isActive !== false && planKind(plan) === "connect").length,
+      bundle: plans.filter((plan) => plan.isActive !== false && planKind(plan) === "bundle").length,
+    }),
     [plans]
   );
 
-  const connectPlans = useMemo(
-    () => plans.filter((plan) => planKind(plan) !== "requests" || plan.connectIncluded),
-    [plans]
+  const loadData = useCallback(
+    async (mode: "initial" | "soft" = "soft") => {
+      if (mode === "initial") setLoading(true);
+      else setSoftLoading(true);
+      setErrorText("");
+
+      try {
+        const [devicesData, plansData, paymentsData] = await Promise.all([
+          apiFetch("/v1/user/devices", { method: "GET" }),
+          apiFetch("/v1/plans", { method: "GET" }),
+          apiFetch("/v1/billing/history?limit=20", { method: "GET" }),
+        ]);
+
+        const nextDevices = (devicesData.devices || []) as DeviceItem[];
+        const nextPlans = (plansData.plans || []) as Plan[];
+        const activePlans = nextPlans.filter((plan) => plan.isActive !== false);
+
+        setDevices(nextDevices);
+        setPlans(activePlans);
+        setPayments((paymentsData.payments || []) as PaymentItem[]);
+        lastLoadedAt.current = Date.now();
+
+        setSelectedDeviceId((current) => {
+          if (
+            current &&
+            nextDevices.some(
+              (item) =>
+                item.device.id === current &&
+                item.status.isPaired &&
+                !item.device.disabled
+            )
+          ) {
+            return current;
+          }
+          return (
+            nextDevices.find(
+              (item) => item.status.isPaired && !item.device.disabled
+            )?.device.id || ""
+          );
+        });
+
+        setSelectedPlanId((current) => {
+          if (current && activePlans.some((plan) => plan.id === current)) return current;
+          return "";
+        });
+      } catch (error) {
+        setErrorText(billingErrorMessage(error, lang));
+      } finally {
+        setLoading(false);
+        setSoftLoading(false);
+      }
+    },
+    [lang]
   );
-
-  async function loadData(showLoader = false) {
-    if (showLoader) setLoading(true);
-    else setRefreshing(true);
-    setErrorText("");
-
-    try {
-      const [devicesData, plansData, paymentsData] = await Promise.all([
-        apiFetch("/v1/user/devices", { method: "GET" }),
-        apiFetch("/v1/plans", { method: "GET" }),
-        apiFetch("/v1/billing/history?limit=20", { method: "GET" }),
-      ]);
-
-      const nextDevices = (devicesData.devices || []) as DeviceItem[];
-      const nextPlans = (plansData.plans || []) as Plan[];
-      setDevices(nextDevices);
-      setPlans(nextPlans);
-      setPayments((paymentsData.payments || []) as PaymentItem[]);
-
-      setSelectedDeviceId((prev) => {
-        if (prev && nextDevices.some((item) => item.device.id === prev && item.status.isPaired)) return prev;
-        return nextDevices.find((item) => item.status.isPaired && !item.device.disabled)?.device.id || "";
-      });
-
-      setSelectedPlanId((prev) => {
-        if (prev && nextPlans.some((plan) => plan.id === prev)) return prev;
-        return nextPlans[0]?.id || "";
-      });
-    } catch (err) {
-      setErrorText(err instanceof Error ? err.message : "Load failed");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }
 
   useEffect(() => {
-    const token = getToken();
-    const localUser = getUser();
-    if (!token) {
+    if (!getToken()) {
       window.location.href = "/login";
       return;
     }
-    setUser(localUser as LocalUser | null);
     setReady(true);
-    void loadData(true);
-  }, []);
+    void loadData("initial");
+  }, [loadData]);
 
-  async function handlePromoRedeem() {
-    if (!selectedDeviceId) {
-      setPromoError(t.promoErrorNoDevice);
+  useEffect(() => {
+    const handleFocus = () => {
+      if (Date.now() - lastLoadedAt.current > 30_000) {
+        void loadData("soft");
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") handleFocus();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [loadData]);
+
+  useEffect(() => {
+    setPromoError("");
+    setPromoMessage("");
+    setPaypalError("");
+    setCaptureMessage("");
+  }, [selectedDeviceId]);
+
+  useEffect(() => {
+    if (!selectedPlan) return;
+    setCategory(planKind(selectedPlan));
+  }, [selectedPlan]);
+
+  async function redeemPromo() {
+    const code = promoCode.trim().toUpperCase();
+    if (!code) {
+      setPromoError(t.promoEmpty);
       setPromoMessage("");
       return;
     }
+    if (!selectedDeviceId) return;
 
-    const normalizedCode = promoCode.trim().toUpperCase();
-    if (!normalizedCode) {
-      setPromoError(t.promoErrorEmpty);
-      setPromoMessage("");
-      return;
-    }
-
+    setRedeemingPromo(true);
+    setPromoError("");
+    setPromoMessage("");
     try {
-      setRedeemingPromo(true);
-      setPromoError("");
-      setPromoMessage("");
       const response = await apiFetch("/v1/user/promo/redeem", {
         method: "POST",
-        body: JSON.stringify({ code: normalizedCode, deviceId: selectedDeviceId, lang }),
+        body: JSON.stringify({ code, deviceId: selectedDeviceId, lang }),
       });
       setPromoCode("");
-      setPromoMessage(`${t.promoSuccess} ${response?.promo?.remainingRequests ?? 0} ${t.requests}.`);
-      await loadData(false);
-    } catch (err) {
-      setPromoError(err instanceof Error ? err.message : "Promo redeem failed");
+      const remaining = response?.promo?.remainingRequests;
+      setPromoMessage(
+        remaining === null || remaining === undefined
+          ? t.promoSuccess
+          : `${t.promoSuccess} · ${formatNumber(remaining, lang)} ${t.requests}`
+      );
+      await loadData("soft");
+    } catch (error) {
+      setPromoError(billingErrorMessage(error, lang));
     } finally {
       setRedeemingPromo(false);
     }
   }
 
-  function PlanCard({ plan }: { plan: Plan }) {
-    const selected = plan.id === selectedPlanId;
-    return (
-      <button
-        type="button"
-        onClick={() => setSelectedPlanId(plan.id)}
-        className={`rounded-2xl border p-4 text-left transition ${
-          selected
-            ? "border-blue-500 bg-blue-500/10 shadow-[0_0_0_1px_rgba(59,130,246,0.25)]"
-            : "border-[#1f2937] bg-[#0b1220] hover:border-[#374151] hover:bg-[#0f172a]"
-        }`}
-      >
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <div className="text-lg font-semibold text-white">{plan.name}</div>
-            <div className="mt-1 text-xs uppercase tracking-[0.18em] text-blue-200/80">{planBadge(plan, t)}</div>
-          </div>
-          <div className="whitespace-nowrap text-sm font-bold text-blue-300">{plan.priceKzt} KZT</div>
-        </div>
-        <div className="space-y-1 text-sm text-[#cbd5e1]">
-          <div>{plan.durationDays} {t.days}</div>
-          <div>{t.requestLimit}: {formatRequestLimit(plan.requestLimit, lang, t)}</div>
-        </div>
-      </button>
-    );
+  function chooseCategory(nextCategory: PlanCategory) {
+    setCategory(nextCategory);
+    if (selectedPlan && planKind(selectedPlan) !== nextCategory) {
+      setSelectedPlanId("");
+    }
   }
 
+  const activePlanName = selectedDevice?.subscription.active
+    ? localizedPlanName(selectedDevice.subscription.plan?.name, lang)
+    : selectedDevice?.trial.active
+      ? t.trial
+      : selectedDevice?.promo?.active
+        ? t.promo
+        : t.noPlan;
+  const activeUntil =
+    selectedDevice?.subscription.currentPeriodEnd ||
+    selectedDevice?.trial.expiresAt ||
+    selectedDevice?.usage.periodEndsAt ||
+    null;
+  const remainingRequests = selectedDevice?.usage.remainingRequests;
+  const connectActive = Boolean(selectedDevice?.connect?.active);
+  const selectedAccessActive = Boolean(selectedDevice?.status.hasAccess);
+  const connectOnlySubscription = Boolean(
+    selectedDevice?.subscription.active &&
+      selectedDevice.subscription.plan &&
+      planKind(selectedDevice.subscription.plan) === "connect" &&
+      !selectedDevice.trial.active &&
+      !selectedDevice.promo?.active
+  );
+
   if (!ready) {
-    return (
-      <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-6 text-white sm:px-6 sm:py-10">
-        <div className="mx-auto max-w-[1220px]">{t.loading}</div>
-      </main>
-    );
+    return <main className="pg-billing-page" aria-busy="true" />;
   }
 
   return (
-    <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-6 text-white sm:px-6 sm:py-10">
-      <div className="mx-auto w-full max-w-[1220px] space-y-5">
-        <section className="rounded-3xl border border-[#1f2937] bg-gradient-to-br from-[#111827] to-[#0b1220] p-5 sm:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="mb-2 text-3xl font-bold">{t.title}</h1>
-              <p className="text-sm text-[#a1a1aa] sm:text-base">{t.subtitle}</p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => void loadData(false)}
-                className="rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 font-semibold text-white transition hover:border-[#4b5563] hover:bg-[#0f172a]"
-              >
-                {refreshing ? t.refreshing : t.refresh}
-              </button>
-              <a
-                href="/dashboard"
-                className="inline-flex justify-center rounded-xl bg-blue-600 px-4 py-3 text-center font-semibold text-white no-underline transition hover:bg-blue-500"
-              >
-                {t.backDashboard}
-              </a>
-            </div>
-          </div>
+    <main className="pg-billing-page">
+      <div className="pg-billing-grid" aria-hidden="true" />
+      <div className="pg-billing-glow" aria-hidden="true" />
 
-          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr]">
-            <div className="rounded-2xl border border-[#1f2937] bg-[#050816]/60 p-4">
-              <div className="mb-1 text-xs uppercase tracking-[0.2em] text-[#94a3b8]">Email</div>
-              <div className="break-anywhere">{user?.email || "—"}</div>
-            </div>
-            <div className="rounded-2xl border border-[#1f2937] bg-[#050816]/60 p-4">
-              <div className="mb-1 text-xs uppercase tracking-[0.2em] text-[#94a3b8]">PocketGPT 2.0</div>
-              <div className="text-[#cbd5e1]">{t.cleanState}</div>
-            </div>
+      <div className="pg-billing-shell">
+        <header className="pg-billing-head">
+          <div>
+            <span className="pg-eyebrow">{t.eyebrow}</span>
+            <h1>{t.title}</h1>
+            <p>{t.subtitle}</p>
           </div>
-        </section>
+          {softLoading ? (
+            <div className="pg-billing-sync" aria-label={t.currentStatus}>
+              <Spinner />
+            </div>
+          ) : null}
+        </header>
 
         {errorText ? (
-          <div className="rounded-2xl border border-[#7f1d1d] bg-[#3f1d1d] p-4 text-sm text-[#fecaca]">
-            {errorText}
+          <div className="pg-billing-message is-error" role="alert">
+            <span>{errorText}</span>
+            <button type="button" onClick={() => void loadData("soft")}>
+              {t.tryAgain}
+            </button>
           </div>
         ) : null}
 
-        <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-          <div className="space-y-5">
-            <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-              <h2 className="mb-4 text-2xl font-semibold">{t.deviceSelected}</h2>
-
-              {loading ? <div className="text-[#a1a1aa]">{t.loading}</div> : null}
-              {!loading && pairedDevices.length === 0 ? <div className="text-[#a1a1aa]">{t.noDevices}</div> : null}
-
-              <label className="block">
-                <span className="mb-2 block text-sm text-[#cbd5e1]">{t.chooseDevice}</span>
-                <select
-                  value={selectedDeviceId}
-                  onChange={(e) => setSelectedDeviceId(e.target.value)}
-                  className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition focus:border-blue-500"
-                >
-                  <option value="">{t.chooseDevice}</option>
-                  {pairedDevices.map((item) => (
-                    <option key={item.device.id} value={item.device.id}>
-                      {(item.device.nickname || item.device.name)} · {item.device.uid}
-                    </option>
-                  ))}
-                </select>
+        {loading ? (
+          <BillingSkeleton />
+        ) : pairedDevices.length === 0 ? (
+          <section className="pg-billing-empty">
+            <div className="pg-billing-empty-icon" aria-hidden="true">
+              <span />
+            </div>
+            <h2>{t.noDevices}</h2>
+            <Link className="pg-button pg-button-primary" href="/pair">
+              {t.pairDevice}
+            </Link>
+          </section>
+        ) : (
+          <>
+            <section className="pg-billing-device-row">
+              <label className="pg-billing-device-select">
+                <span>{t.device}</span>
+                <div>
+                  <select
+                    value={selectedDeviceId}
+                    onChange={(event) => setSelectedDeviceId(event.target.value)}
+                  >
+                    {pairedDevices.map((item) => (
+                      <option key={item.device.id} value={item.device.id}>
+                        {deviceName(item)}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronIcon />
+                </div>
               </label>
 
-              {selectedDevice ? (
-                <div className="mt-4 space-y-4">
-                  <div className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4 text-sm leading-7 text-[#d1d5db] sm:text-base">
-                    <div className="break-anywhere">UID: {selectedDevice.device.uid}</div>
-                    <div>{t.paired}: {selectedDevice.status.isPaired ? t.yes : t.no}</div>
-                    <div>{t.hasAccess}: {selectedDevice.status.hasAccess ? t.yes : t.no}</div>
-                    <div>{t.currentPlan}: {selectedDevice.subscription.active ? selectedDevice.subscription.plan?.name || "—" : t.noActivePlan}</div>
-                    <div>{t.requestLimit}: {formatRequestLimit(selectedDevice.usage.requestLimit, lang, t)}</div>
-                    <div className="break-anywhere">{t.activeUntil}: {formatDate(selectedDevice.subscription.currentPeriodEnd || selectedDevice.trial.expiresAt, lang)}</div>
-                  </div>
+              <div className="pg-billing-device-meta">
+                <span>{t.uid}</span>
+                <strong>{selectedDevice?.device.uid || "—"}</strong>
+              </div>
+            </section>
 
-                </div>
-              ) : null}
-            </div>
+            <section className="pg-billing-status" aria-label={t.currentStatus}>
+              <div className="pg-billing-status-head">
+                <h2>{t.currentStatus}</h2>
+                <span className={`pg-status-pill is-${selectedAccessActive ? "active" : "inactive"}`}>
+                  <i />
+                  {selectedAccessActive ? t.active : t.inactive}
+                </span>
+              </div>
 
-            <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-              <h2 className="mb-2 text-2xl font-semibold">{t.promoTitle}</h2>
-              <p className="mb-4 text-sm text-[#a1a1aa] sm:text-base">{t.promoSubtitle}</p>
+              <div className="pg-billing-metrics">
+                <article>
+                  <span>{t.plan}</span>
+                  <strong>{activePlanName}</strong>
+                </article>
+                <article>
+                  <span>{t.requestsLeft}</span>
+                  <strong>
+                    {remainingRequests === null || remainingRequests === undefined
+                      ? connectOnlySubscription
+                        ? "—"
+                        : t.unlimited
+                      : formatNumber(remainingRequests, lang)}
+                  </strong>
+                  {selectedDevice?.usage.usedRequests ? (
+                    <small>
+                      {t.usedRequests}: {formatNumber(selectedDevice.usage.usedRequests, lang)}
+                    </small>
+                  ) : null}
+                </article>
+                <article>
+                  <span>{t.validUntil}</span>
+                  <strong>{activeUntil ? formatDate(activeUntil, lang) : t.noExpiry}</strong>
+                </article>
+                <article>
+                  <span>{t.connect}</span>
+                  <strong className={connectActive ? "is-positive" : ""}>
+                    {connectActive ? t.active : t.inactive}
+                  </strong>
+                </article>
+              </div>
+            </section>
 
-              <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+            <section className="pg-billing-promo">
+              <div className="pg-billing-promo-copy">
+                <span>{t.promoCode}</span>
+                <strong>
+                  {selectedDevice?.promo?.active
+                    ? `${t.promoBalance}: ${formatNumber(selectedDevice.promo.remainingRequests, lang)}`
+                    : t.promoCode}
+                </strong>
+                {selectedDevice?.promo?.grantsCount ? (
+                  <small>
+                    {t.promoCodes}: {selectedDevice.promo.grantsCount}
+                  </small>
+                ) : null}
+              </div>
+              <div className="pg-billing-promo-form">
                 <input
                   value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  onChange={(event) => {
+                    setPromoCode(event.target.value.toUpperCase());
+                    setPromoError("");
+                    setPromoMessage("");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") void redeemPromo();
+                  }}
                   placeholder={t.promoPlaceholder}
-                  className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition placeholder:text-[#6b7280] focus:border-blue-500"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
                 <button
                   type="button"
-                  onClick={() => void handlePromoRedeem()}
+                  onClick={() => void redeemPromo()}
                   disabled={redeemingPromo || !selectedDeviceId}
-                  className="rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {redeemingPromo ? t.redeeming : t.redeemPromo}
+                  {redeemingPromo ? <Spinner /> : null}
+                  {redeemingPromo ? t.activating : t.activate}
                 </button>
               </div>
+              {promoMessage || promoError ? (
+                <div
+                  className={`pg-billing-inline-message ${promoError ? "is-error" : "is-success"}`}
+                  role={promoError ? "alert" : "status"}
+                >
+                  {promoError || promoMessage}
+                </div>
+              ) : null}
+            </section>
 
-              {promoMessage ? <div className="mt-4 rounded-xl border border-[#14532d] bg-[#0f2f1d] p-3 text-sm text-[#bbf7d0]">{promoMessage}</div> : null}
-              {promoError ? <div className="mt-4 rounded-xl border border-[#7f1d1d] bg-[#3f1d1d] p-3 text-sm text-[#fecaca]">{promoError}</div> : null}
-
-              <div className="mt-4 rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4 text-sm leading-7 text-[#d1d5db] sm:text-base">
-                <div className="mb-2 text-xs uppercase tracking-[0.2em] text-[#94a3b8]">{t.promoBalance}</div>
-                <div>{selectedDevice?.promo?.active ? t.promoActive : t.promoInactive}</div>
-                <div>{t.promoTotal}: {selectedDevice?.promo?.totalRequests ?? 0}</div>
-                <div>{t.promoUsed}: {selectedDevice?.promo?.usedRequests ?? 0}</div>
-                <div>{t.promoRemaining}: {selectedDevice?.promo?.remainingRequests ?? 0}</div>
-                <div>{t.grantsCount}: {selectedDevice?.promo?.grantsCount ?? 0}</div>
-                <div className="break-anywhere">{t.activeCode}: {selectedDevice?.promo?.activeCode || "—"}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-              <h2 className="mb-4 text-2xl font-semibold">{t.choosePlan}</h2>
-
-              {loading ? <div className="text-[#a1a1aa]">{t.loading}</div> : null}
-              {!loading && plans.length === 0 ? <div className="text-[#a1a1aa]">{t.noPlans}</div> : null}
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-[#1f2937] bg-[#050816]/40 p-3">
-                  <div className="mb-3">
-                    <div className="text-lg font-bold text-white">{t.requestPlans}</div>
-                    <div className="text-sm text-[#94a3b8]">{t.requestPlansHint}</div>
-                  </div>
-                  <div className="grid gap-3">
-                    {requestPlans.map((plan) => <PlanCard key={plan.id} plan={plan} />)}
-                  </div>
+            <div className="pg-billing-commerce">
+              <section className="pg-billing-plans">
+                <div className="pg-billing-section-title">
+                  <h2>{t.plans}</h2>
                 </div>
 
-                <div className="rounded-2xl border border-blue-500/30 bg-blue-500/5 p-3">
-                  <div className="mb-3">
-                    <div className="text-lg font-bold text-white">{t.connectPlans}</div>
-                    <div className="text-sm text-[#94a3b8]">{t.connectPlansHint}</div>
-                  </div>
-                  <div className="grid gap-3">
-                    {connectPlans.map((plan) => <PlanCard key={plan.id} plan={plan} />)}
-                  </div>
+                <div className="pg-billing-tabs" role="tablist" aria-label={t.plans}>
+                  {([
+                    ["requests", t.regular],
+                    ["connect", t.connectOnly],
+                    ["bundle", t.bundles],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="tab"
+                      aria-selected={category === value}
+                      className={category === value ? "is-active" : ""}
+                      onClick={() => chooseCategory(value)}
+                    >
+                      <span>{label}</span>
+                      <small>{categoryCounts[value]}</small>
+                    </button>
+                  ))}
                 </div>
-              </div>
 
-              <div className="mt-4 rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4 text-sm leading-7 text-[#d1d5db] sm:text-base">
-                <div className="mb-2 text-xs uppercase tracking-[0.2em] text-[#94a3b8]">{t.planSelected}</div>
-                <div className="font-semibold text-white">{selectedPlan?.name || "—"}</div>
-                <div>{selectedPlan ? `${selectedPlan.priceKzt} KZT` : "—"}</div>
-                <div>{t.requestLimit}: {formatRequestLimit(selectedPlan?.requestLimit, lang, t)}</div>
-                <div>{selectedPlan ? planBadge(selectedPlan, t) : "—"}</div>
-              </div>
-            </div>
+                {categorizedPlans.length === 0 ? (
+                  <div className="pg-billing-no-plans">{t.noPlans}</div>
+                ) : (
+                  <div className="pg-billing-plan-list">
+                    {categorizedPlans.map((plan, index) => {
+                      const selected = selectedPlanId === plan.id;
+                      const kind = planKind(plan);
+                      return (
+                        <button
+                          type="button"
+                          className={`pg-billing-plan ${selected ? "is-selected" : ""}`}
+                          key={plan.id}
+                          onClick={() => setSelectedPlanId(plan.id)}
+                          style={{ "--plan-index": index } as CSSProperties}
+                        >
+                          <div className="pg-billing-plan-radio">
+                            {selected ? <CardCheckIcon /> : null}
+                          </div>
+                          <div className="pg-billing-plan-main">
+                            <div className="pg-billing-plan-name">
+                              <strong>{localizedPlanName(plan.name, lang)}</strong>
+                              <span>
+                                {kind === "connect"
+                                  ? t.connectOnly
+                                  : kind === "bundle"
+                                    ? t.includesConnect
+                                    : t.requestsOnly}
+                              </span>
+                            </div>
+                            <div className="pg-billing-plan-details">
+                              {kind !== "connect" ? (
+                                <span>
+                                  {plan.requestLimit && plan.requestLimit > 0
+                                    ? `${formatNumber(plan.requestLimit, lang)} ${t.requests}`
+                                    : t.unlimited}
+                                </span>
+                              ) : null}
+                              <span>
+                                {plan.durationDays} {t.days}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="pg-billing-plan-price">
+                            <strong>{formatNumber(plan.priceKzt, lang)}</strong>
+                            <span>₸</span>
+                          </div>
+                          <span className="pg-billing-plan-action">
+                            {selected ? t.selected : t.choose}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
 
-            <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-              <h2 className="mb-2 text-2xl font-semibold">{t.buyNow}</h2>
-              <p className="mb-4 text-sm text-[#a1a1aa] sm:text-base">{t.openPayPal}</p>
+              <aside className="pg-billing-checkout">
+                <div className="pg-billing-checkout-head">
+                  <span>{t.order}</span>
+                  <i aria-hidden="true" />
+                </div>
 
-              {paypalError ? <div className="mb-4 rounded-xl border border-[#7f1d1d] bg-[#3f1d1d] p-3 text-sm text-[#fecaca]">{paypalError}</div> : null}
-              {captureMessage ? <div className="mb-4 rounded-xl border border-[#14532d] bg-[#0f2f1d] p-3 text-sm text-[#bbf7d0]">{captureMessage}</div> : null}
+                <dl>
+                  <div>
+                    <dt>{t.chosenDevice}</dt>
+                    <dd>{deviceName(selectedDevice)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.chosenPlan}</dt>
+                    <dd>{localizedPlanName(selectedPlan?.name, lang)}</dd>
+                  </div>
+                  <div className="is-total">
+                    <dt>{t.price}</dt>
+                    <dd>
+                      {selectedPlan ? `${formatNumber(selectedPlan.priceKzt, lang)} ₸` : "—"}
+                    </dd>
+                  </div>
+                </dl>
 
-              {!paypalClientId ? (
-                <div className="rounded-xl border border-[#7f1d1d] bg-[#3f1d1d] p-3 text-sm text-[#fecaca]">{t.paypalMissing}</div>
-              ) : selectedDeviceId && selectedPlanId ? (
-                <PayPalScriptProvider options={{ clientId: paypalClientId, currency: "USD", intent: "capture", components: "buttons" }}>
-                  <div className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4">
-                    <PayPalButtons
-                      style={{ layout: "vertical", shape: "rect", label: "pay" }}
-                      createOrder={async () => {
-                        setPaypalError("");
-                        setCaptureMessage("");
-                        const response = (await apiFetch("/v1/billing/create-order", {
-                          method: "POST",
-                          body: JSON.stringify({ deviceId: selectedDeviceId, planId: selectedPlanId, lang }),
-                        })) as CreateOrderResponse;
-                        return response.orderId;
-                      }}
-                      onApprove={async (data) => {
-                        try {
+                {paypalError ? (
+                  <div className="pg-billing-checkout-message is-error" role="alert">
+                    {paypalError}
+                  </div>
+                ) : null}
+                {captureMessage ? (
+                  <div className="pg-billing-checkout-message is-success" role="status">
+                    {captureMessage}
+                  </div>
+                ) : null}
+
+                {!selectedPlanId ? (
+                  <div className="pg-billing-pay-placeholder">{t.selectPlanFirst}</div>
+                ) : !paypalClientId ? (
+                  <div className="pg-billing-pay-placeholder is-error">
+                    {t.paypalMissing}
+                  </div>
+                ) : (
+                  <PayPalScriptProvider
+                    options={{
+                      clientId: paypalClientId,
+                      currency: "USD",
+                      intent: "capture",
+                      components: "buttons",
+                    }}
+                  >
+                    <div className="pg-billing-paypal">
+                      <PayPalButtons
+                        forceReRender={[selectedDeviceId, selectedPlanId, lang]}
+                        style={{
+                          layout: "vertical",
+                          shape: "rect",
+                          label: "pay",
+                          height: 45,
+                        }}
+                        createOrder={async () => {
                           setPaypalError("");
                           setCaptureMessage("");
-                          await apiFetch("/v1/billing/capture-order", {
-                            method: "POST",
-                            body: JSON.stringify({ orderId: data.orderID, deviceId: selectedDeviceId, planId: selectedPlanId, lang }),
-                          });
-                          setCaptureMessage(lang === "en" ? "Payment captured successfully." : lang === "kz" ? "Төлем сәтті расталды." : "Оплата успешно подтверждена.");
-                          await loadData(false);
-                        } catch (err) {
-                          setPaypalError(err instanceof Error ? err.message : "Capture failed");
-                        }
-                      }}
-                      onError={(err) => setPaypalError(err instanceof Error ? err.message : "PayPal error")}
-                    />
-                  </div>
-                </PayPalScriptProvider>
-              ) : (
-                <div className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4 text-sm text-[#a1a1aa]">
-                  {lang === "en" ? "Please select a device and a plan first." : lang === "kz" ? "Алдымен құрылғы мен жоспарды таңда." : "Сначала выбери устройство и план."}
-                </div>
-              )}
+                          try {
+                            const response = (await apiFetch(
+                              "/v1/billing/create-order",
+                              {
+                                method: "POST",
+                                body: JSON.stringify({
+                                  deviceId: selectedDeviceId,
+                                  planId: selectedPlanId,
+                                  lang,
+                                }),
+                              }
+                            )) as CreateOrderResponse;
+                            return response.orderId;
+                          } catch (error) {
+                            setPaypalError(t.paymentFailed);
+                            throw error;
+                          }
+                        }}
+                        onApprove={async (data) => {
+                          try {
+                            setPaypalError("");
+                            setCaptureMessage("");
+                            await apiFetch("/v1/billing/capture-order", {
+                              method: "POST",
+                              body: JSON.stringify({
+                                orderId: data.orderID,
+                                deviceId: selectedDeviceId,
+                                planId: selectedPlanId,
+                                lang,
+                              }),
+                            });
+                            setCaptureMessage(t.paymentSuccess);
+                            await loadData("soft");
+                          } catch (error) {
+                            setPaypalError(t.paymentFailed);
+                          }
+                        }}
+                        onError={() => setPaypalError(t.paymentFailed)}
+                        onCancel={() => setPaypalError("")}
+                      />
+                    </div>
+                  </PayPalScriptProvider>
+                )}
+              </aside>
             </div>
-          </div>
-        </section>
 
-        <section className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-          <h2 className="mb-3 text-2xl font-semibold">{t.paymentHistory}</h2>
-          {loading ? <div className="text-[#a1a1aa]">{t.loading}</div> : null}
-          {!loading && !errorText && payments.length === 0 ? <div className="text-[#a1a1aa]">{t.noPayments}</div> : null}
+            <section className={`pg-billing-history ${historyOpen ? "is-open" : ""}`}>
+              <button
+                className="pg-billing-history-toggle"
+                type="button"
+                aria-expanded={historyOpen}
+                onClick={() => setHistoryOpen((current) => !current)}
+              >
+                <span>
+                  <strong>{historyOpen ? t.hideHistory : t.history}</strong>
+                  <small>{payments.length}</small>
+                </span>
+                <ChevronIcon open={historyOpen} />
+              </button>
 
-          <div className="grid gap-3 lg:grid-cols-2">
-            {payments.map((payment) => (
-              <div key={payment.id} className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4">
-                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-                  <div className="break-anywhere font-bold">{payment.plan?.name || "Plan"} — {payment.amountKzt} {payment.currency}</div>
-                  <div className="break-anywhere text-[#86efac]">{payment.status}</div>
+              {historyOpen ? (
+                <div className="pg-billing-history-list">
+                  {payments.length === 0 ? (
+                    <div className="pg-billing-history-empty">{t.emptyHistory}</div>
+                  ) : (
+                    payments.map((payment, index) => {
+                      const status = paymentStatus(payment.status, t);
+                      return (
+                        <article
+                          key={payment.id}
+                          style={{ "--payment-index": index } as CSSProperties}
+                        >
+                          <div>
+                            <strong>{localizedPlanName(payment.plan?.name, lang)}</strong>
+                            <span>{payment.device?.nickname || payment.device?.name || "PocketGPT"}</span>
+                          </div>
+                          <time>{formatDate(payment.createdAt, lang)}</time>
+                          <b>{formatNumber(payment.amountKzt, lang)} ₸</b>
+                          <em className={`is-${status.kind}`}>{status.label}</em>
+                        </article>
+                      );
+                    })
+                  )}
                 </div>
-                <div className="space-y-1 text-sm leading-7 text-[#cbd5e1] sm:text-base">
-                  <div className="break-anywhere">{t.provider}: {payment.provider}</div>
-                  <div>{t.amount}: {payment.amountKzt} {payment.currency}</div>
-                  <div className="break-anywhere">{t.paidAt}: {formatDate(payment.createdAt, lang)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+              ) : null}
+            </section>
+          </>
+        )}
       </div>
     </main>
+  );
+}
+
+function BillingSkeleton() {
+  return (
+    <div className="pg-billing-skeleton" aria-hidden="true">
+      <div className="pg-billing-skeleton-line is-device" />
+      <div className="pg-billing-skeleton-status">
+        {[0, 1, 2, 3].map((item) => (
+          <span key={item} />
+        ))}
+      </div>
+      <div className="pg-billing-skeleton-commerce">
+        <div>
+          {[0, 1, 2].map((item) => (
+            <span key={item} />
+          ))}
+        </div>
+        <i />
+      </div>
+    </div>
   );
 }
