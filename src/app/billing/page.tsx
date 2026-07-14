@@ -383,10 +383,6 @@ export default function BillingPage() {
   const [redeemingPromo, setRedeemingPromo] = useState(false);
   const [paypalError, setPaypalError] = useState("");
   const [captureMessage, setCaptureMessage] = useState("");
-  const [nicknameValue, setNicknameValue] = useState("");
-  const [nicknameMessage, setNicknameMessage] = useState("");
-  const [nicknameError, setNicknameError] = useState("");
-  const [savingNickname, setSavingNickname] = useState(false);
 
   useEffect(() => {
     const updateLang = () => setLang(getLang());
@@ -419,12 +415,6 @@ export default function BillingPage() {
     () => plans.filter((plan) => planKind(plan) !== "requests" || plan.connectIncluded),
     [plans]
   );
-
-  useEffect(() => {
-    setNicknameValue(selectedDevice?.device.nickname || "");
-    setNicknameMessage("");
-    setNicknameError("");
-  }, [selectedDeviceId, selectedDevice?.device.nickname]);
 
   async function loadData(showLoader = false) {
     if (showLoader) setLoading(true);
@@ -502,25 +492,6 @@ export default function BillingPage() {
       setPromoError(err instanceof Error ? err.message : "Promo redeem failed");
     } finally {
       setRedeemingPromo(false);
-    }
-  }
-
-  async function handleSaveNickname() {
-    if (!selectedDeviceId) return;
-    try {
-      setSavingNickname(true);
-      setNicknameError("");
-      setNicknameMessage("");
-      await apiFetch("/v1/user/device/nickname", {
-        method: "POST",
-        body: JSON.stringify({ deviceId: selectedDeviceId, nickname: nicknameValue.trim(), lang }),
-      });
-      setNicknameMessage(t.nicknameSaved);
-      await loadData(false);
-    } catch (err) {
-      setNicknameError(err instanceof Error ? err.message : "Nickname save failed");
-    } finally {
-      setSavingNickname(false);
     }
   }
 
@@ -638,29 +609,6 @@ export default function BillingPage() {
                     <div className="break-anywhere">{t.activeUntil}: {formatDate(selectedDevice.subscription.currentPeriodEnd || selectedDevice.trial.expiresAt, lang)}</div>
                   </div>
 
-                  <div className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4">
-                    <div className="mb-1 text-sm font-semibold text-white">{t.nickname}</div>
-                    <p className="mb-3 text-sm text-[#94a3b8]">{t.nicknameHint}</p>
-                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                      <input
-                        value={nicknameValue}
-                        maxLength={15}
-                        onChange={(e) => setNicknameValue(e.target.value)}
-                        placeholder={t.nicknamePlaceholder}
-                        className="w-full rounded-xl border border-[#374151] bg-[#050816] px-4 py-3 text-white outline-none transition placeholder:text-[#6b7280] focus:border-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => void handleSaveNickname()}
-                        disabled={savingNickname || !selectedDeviceId || !nicknameValue.trim()}
-                        className="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {savingNickname ? t.saving : t.saveNickname}
-                      </button>
-                    </div>
-                    {nicknameMessage ? <div className="mt-3 text-sm text-[#86efac]">{nicknameMessage}</div> : null}
-                    {nicknameError ? <div className="mt-3 text-sm text-[#fecaca]">{nicknameError}</div> : null}
-                  </div>
                 </div>
               ) : null}
             </div>

@@ -194,9 +194,6 @@ export default function ConnectPage() {
   const [devices, setDevices] = useState<DeviceItem[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [connectState, setConnectState] = useState<ConnectState | null>(null);
-  const [nicknameValue, setNicknameValue] = useState("");
-  const [nicknameMessage, setNicknameMessage] = useState("");
-  const [savingNickname, setSavingNickname] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [searchResults, setSearchResults] = useState<Device[]>([]);
   const [searched, setSearched] = useState(false);
@@ -219,11 +216,6 @@ export default function ConnectPage() {
     () => pairedDevices.find((item) => item.device.id === selectedDeviceId)?.device || null,
     [pairedDevices, selectedDeviceId]
   );
-
-  useEffect(() => {
-    setNicknameValue(selectedDevice?.nickname || "");
-    setNicknameMessage("");
-  }, [selectedDeviceId, selectedDevice?.nickname]);
 
   async function loadData(showLoader = false, forcedDeviceId?: string) {
     if (showLoader) setLoading(true);
@@ -267,25 +259,6 @@ export default function ConnectPage() {
     setSearched(false);
     setActionMessage("");
     await loadData(false, deviceId);
-  }
-
-  async function handleSaveNickname() {
-    if (!selectedDeviceId || !nicknameValue.trim()) return;
-    try {
-      setSavingNickname(true);
-      setErrorText("");
-      setNicknameMessage("");
-      await apiFetch("/v1/user/device/nickname", {
-        method: "POST",
-        body: JSON.stringify({ deviceId: selectedDeviceId, nickname: nicknameValue.trim(), lang }),
-      });
-      setNicknameMessage(t.nicknameSaved);
-      await loadData(false, selectedDeviceId);
-    } catch (err) {
-      setErrorText(err instanceof Error ? err.message : "Nickname save failed");
-    } finally {
-      setSavingNickname(false);
-    }
   }
 
   async function handleSearch() {
@@ -395,28 +368,6 @@ export default function ConnectPage() {
               ) : null}
             </div>
 
-            <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-              <h2 className="mb-2 text-2xl font-semibold">{t.nicknameTitle}</h2>
-              <p className="mb-4 text-sm text-[#a1a1aa]">{t.nicknameHint}</p>
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                <input
-                  value={nicknameValue}
-                  maxLength={15}
-                  onChange={(e) => setNicknameValue(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))}
-                  placeholder={t.nicknamePlaceholder}
-                  className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition placeholder:text-[#6b7280] focus:border-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleSaveNickname()}
-                  disabled={!selectedDeviceId || !nicknameValue.trim() || savingNickname}
-                  className="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {savingNickname ? t.saving : t.saveNickname}
-                </button>
-              </div>
-              {nicknameMessage ? <div className="mt-3 text-sm text-[#86efac]">{nicknameMessage}</div> : null}
-            </div>
 
             <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
               <h2 className="mb-2 text-2xl font-semibold">{t.connectStatus}</h2>
