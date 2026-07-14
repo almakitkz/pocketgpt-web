@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import {
+  classifyDeviceNicknameError,
+  DEVICE_NICKNAME_MAX_LENGTH,
+  isValidDeviceNickname,
+  sanitizeDeviceNickname,
+} from "@/lib/device-nickname";
 import { getToken, getUser } from "@/lib/auth";
 import {
   getSiteLanguage,
@@ -333,27 +339,9 @@ function formatDateTime(value: string | null | undefined, lang: SiteLanguage): s
 
 function nicknameErrorMessage(error: unknown, lang: SiteLanguage): string {
   const t = TEXT[lang];
-  const message = error instanceof Error ? error.message.toLowerCase() : "";
-
-  if (
-    message.includes("taken") ||
-    message.includes("exists") ||
-    message.includes("unique") ||
-    message.includes("занят") ||
-    message.includes("duplicate")
-  ) {
-    return t.nicknameTaken;
-  }
-
-  if (
-    message.includes("invalid") ||
-    message.includes("format") ||
-    message.includes("character") ||
-    message.includes("length")
-  ) {
-    return t.nicknameInvalid;
-  }
-
+  const kind = classifyDeviceNicknameError(error);
+  if (kind === "taken") return t.nicknameTaken;
+  if (kind === "invalid") return t.nicknameInvalid;
   return t.loadFailed;
 }
 
@@ -510,7 +498,7 @@ export default function DashboardPage() {
     if (!renameDevice) return;
     const nickname = nicknameValue.trim().toLowerCase();
 
-    if (!nickname || !/^[a-z0-9._-]{1,15}$/.test(nickname)) {
+    if (!isValidDeviceNickname(nickname)) {
       setNicknameError(t.nicknameInvalid);
       return;
     }
@@ -826,13 +814,13 @@ export default function DashboardPage() {
               <input
                 autoFocus
                 value={nicknameValue}
-                maxLength={15}
+                maxLength={DEVICE_NICKNAME_MAX_LENGTH}
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
                 placeholder={t.nicknamePlaceholder}
                 onChange={(event) => {
-                  setNicknameValue(event.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""));
+                  setNicknameValue(sanitizeDeviceNickname(event.target.value));
                   setNicknameError("");
                   setNicknameMessage("");
                 }}
@@ -840,7 +828,7 @@ export default function DashboardPage() {
                   if (event.key === "Enter") void saveNickname();
                 }}
               />
-              <small>{nicknameValue.length}/15</small>
+              <small>{nicknameValue.length}/{DEVICE_NICKNAME_MAX_LENGTH}</small>
             </label>
 
             {nicknameMessage ? <div className="pg-form-message is-success" role="status">{nicknameMessage}</div> : null}
