@@ -231,11 +231,21 @@ export default function NavBar() {
           <MenuIcon open={menuOpen} />
         </button>
 
-        <div className="pg-header-mark" aria-label="PocketGPT">
+        <Link
+          href="/"
+          className="pg-header-mark"
+          aria-label={t.home}
+          onClick={() => {
+            setMenuOpen(false);
+            setLanguageOpen(false);
+            if (pathname === "/") {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+        >
           <span className="pg-header-mark-dot" />
           <span>POCKETGPT</span>
-          <span className="pg-header-mark-index">02</span>
-        </div>
+        </Link>
 
         <div className="pg-language" ref={languageRef}>
           <button

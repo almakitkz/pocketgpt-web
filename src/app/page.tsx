@@ -18,22 +18,12 @@ const TEXT = {
     dashboard: "Открыть кабинет",
     signup: "Создать аккаунт",
     login: "Войти",
-    voice: "Голос",
-    voiceText: "Полная запись WAV",
-    answer: "Ответ",
-    answerText: "Потоковый вывод",
-    connect: "Connect",
-    connectText: "До 3 устройств",
     displayQuestion: "Почему небо синее?",
     displayAnswer: "Свет рассеивается в атмосфере…",
     listening: "СЛУШАЮ",
     online: "ONLINE",
-    languages: "RU / ENG / KZ",
     revision: "REV. 02",
     deviceLabel: "POCKET VOICE TERMINAL",
-    flowOne: "ГОВОРИ",
-    flowTwo: "ОБРАБОТКА",
-    flowThree: "ОТВЕТ",
   },
   en: {
     eyebrow: "VOICE AI / POCKET FORMAT",
@@ -43,22 +33,12 @@ const TEXT = {
     dashboard: "Open dashboard",
     signup: "Create account",
     login: "Log in",
-    voice: "Voice",
-    voiceText: "Complete WAV capture",
-    answer: "Answer",
-    answerText: "Streaming output",
-    connect: "Connect",
-    connectText: "Up to 3 devices",
     displayQuestion: "Why is the sky blue?",
     displayAnswer: "Light scatters in the atmosphere…",
     listening: "LISTENING",
     online: "ONLINE",
-    languages: "RU / ENG / KZ",
     revision: "REV. 02",
     deviceLabel: "POCKET VOICE TERMINAL",
-    flowOne: "SPEAK",
-    flowTwo: "PROCESS",
-    flowThree: "ANSWER",
   },
   kz: {
     eyebrow: "ДАУЫСТЫҚ AI / ҚАЛТАЛЫҚ ФОРМАТ",
@@ -68,22 +48,12 @@ const TEXT = {
     dashboard: "Жеке кабинетті ашу",
     signup: "Аккаунт ашу",
     login: "Кіру",
-    voice: "Дауыс",
-    voiceText: "Толық WAV жазбасы",
-    answer: "Жауап",
-    answerText: "Ағынмен шығару",
-    connect: "Connect",
-    connectText: "3 құрылғыға дейін",
     displayQuestion: "Аспан неге көк?",
     displayAnswer: "Жарық атмосферада шашырайды…",
     listening: "ТЫҢДАУДА",
     online: "ОНЛАЙН",
-    languages: "RU / ENG / KZ",
     revision: "REV. 02",
     deviceLabel: "ҚАЛТАЛЫҚ ДАУЫС ТЕРМИНАЛЫ",
-    flowOne: "СӨЙЛЕ",
-    flowTwo: "ӨҢДЕУ",
-    flowThree: "ЖАУАП",
   },
 } as const;
 
@@ -226,43 +196,11 @@ export default function Home() {
               )}
             </div>
 
-            <div className="pg-signal-row" aria-label={t.languages}>
-              <span><i />{t.online}</span>
-              <span>{t.languages}</span>
-              <span>BUILD 231</span>
-            </div>
           </div>
 
           <DeviceVisual t={t} />
         </section>
 
-        <section className="pg-flow" aria-label="PocketGPT workflow">
-          <div className="pg-flow-line" aria-hidden="true" />
-          <article className="pg-flow-item">
-            <div className="pg-flow-index">01</div>
-            <div>
-              <h2>{t.voice}</h2>
-              <p>{t.voiceText}</p>
-            </div>
-            <span>{t.flowOne}</span>
-          </article>
-          <article className="pg-flow-item">
-            <div className="pg-flow-index">02</div>
-            <div>
-              <h2>{t.answer}</h2>
-              <p>{t.answerText}</p>
-            </div>
-            <span>{t.flowTwo}</span>
-          </article>
-          <article className="pg-flow-item">
-            <div className="pg-flow-index">03</div>
-            <div>
-              <h2>{t.connect}</h2>
-              <p>{t.connectText}</p>
-            </div>
-            <span>{t.flowThree}</span>
-          </article>
-        </section>
       </div>
     </main>
   );
