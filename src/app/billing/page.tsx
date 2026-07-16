@@ -179,6 +179,11 @@ const TEXT = {
     pay: "Оплатить через PayPal",
     selectPlanFirst: "Выбери тариф",
     paypalMissing: "PayPal пока не настроен",
+    acceptPrefix: "Я прочитал и принимаю",
+    paymentTerms: "Условия оплаты",
+    and: "и",
+    refundPolicy: "Политику возврата",
+    termsRequired: "Подтверди согласие с условиями перед оплатой",
     paymentSuccess: "Оплата подтверждена",
     paymentFailed: "Не удалось завершить оплату",
     promoCode: "Промокод",
@@ -239,6 +244,11 @@ const TEXT = {
     pay: "Pay with PayPal",
     selectPlanFirst: "Select a plan",
     paypalMissing: "PayPal is not configured yet",
+    acceptPrefix: "I have read and accept the",
+    paymentTerms: "Payment Terms",
+    and: "and",
+    refundPolicy: "Refund Policy",
+    termsRequired: "Accept the terms before payment",
     paymentSuccess: "Payment confirmed",
     paymentFailed: "Could not complete the payment",
     promoCode: "Promo code",
@@ -299,6 +309,11 @@ const TEXT = {
     pay: "PayPal арқылы төлеу",
     selectPlanFirst: "Тарифті таңда",
     paypalMissing: "PayPal әзірге бапталмаған",
+    acceptPrefix: "Мен оқып, қабылдаймын",
+    paymentTerms: "Төлем шарттарын",
+    and: "және",
+    refundPolicy: "Қайтару саясатын",
+    termsRequired: "Төлем алдында шарттармен келісуді раста",
     paymentSuccess: "Төлем расталды",
     paymentFailed: "Төлемді аяқтау мүмкін болмады",
     promoCode: "Промокод",
@@ -479,6 +494,7 @@ export default function BillingPage() {
   const [redeemingPromo, setRedeemingPromo] = useState(false);
   const [paypalError, setPaypalError] = useState("");
   const [captureMessage, setCaptureMessage] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const lastLoadedAt = useRef(0);
 
@@ -607,7 +623,8 @@ export default function BillingPage() {
     setPromoMessage("");
     setPaypalError("");
     setCaptureMessage("");
-  }, [selectedDeviceId]);
+    setTermsAccepted(false);
+  }, [selectedDeviceId, selectedPlanId]);
 
   useEffect(() => {
     if (!selectedPlan) return;
@@ -958,68 +975,99 @@ export default function BillingPage() {
                     {t.paypalMissing}
                   </div>
                 ) : (
-                  <PayPalScriptProvider
-                    options={{
-                      clientId: paypalClientId,
-                      currency: "USD",
-                      intent: "capture",
-                      components: "buttons",
-                    }}
-                  >
-                    <div className="pg-billing-paypal">
-                      <PayPalButtons
-                        forceReRender={[selectedDeviceId, selectedPlanId, lang]}
-                        style={{
-                          layout: "vertical",
-                          shape: "rect",
-                          label: "pay",
-                          height: 45,
+                  <>
+                    <div className={`pg-billing-consent ${termsAccepted ? "is-accepted" : ""}`}>
+                      <input
+                        id="billing-terms-consent"
+                        type="checkbox"
+                        checked={termsAccepted}
+                        onChange={(event) => {
+                          setTermsAccepted(event.target.checked);
+                          if (event.target.checked) setPaypalError("");
                         }}
-                        createOrder={async () => {
-                          setPaypalError("");
-                          setCaptureMessage("");
-                          try {
-                            const response = (await apiFetch(
-                              "/v1/billing/create-order",
-                              {
-                                method: "POST",
-                                body: JSON.stringify({
-                                  deviceId: selectedDeviceId,
-                                  planId: selectedPlanId,
-                                  lang,
-                                }),
-                              }
-                            )) as CreateOrderResponse;
-                            return response.orderId;
-                          } catch (error) {
-                            setPaypalError(t.paymentFailed);
-                            throw error;
-                          }
-                        }}
-                        onApprove={async (data) => {
-                          try {
-                            setPaypalError("");
-                            setCaptureMessage("");
-                            await apiFetch("/v1/billing/capture-order", {
-                              method: "POST",
-                              body: JSON.stringify({
-                                orderId: data.orderID,
-                                deviceId: selectedDeviceId,
-                                planId: selectedPlanId,
-                                lang,
-                              }),
-                            });
-                            setCaptureMessage(t.paymentSuccess);
-                            await loadData("soft");
-                          } catch {
-                            setPaypalError(t.paymentFailed);
-                          }
-                        }}
-                        onError={() => setPaypalError(t.paymentFailed)}
-                        onCancel={() => setPaypalError("")}
                       />
+                      <div>
+                        <label htmlFor="billing-terms-consent">{t.acceptPrefix}</label>{" "}
+                        <Link href="/terms" target="_blank">{t.paymentTerms}</Link>{" "}
+                        <span>{t.and}</span>{" "}
+                        <Link href="/refund-policy" target="_blank">{t.refundPolicy}</Link>.
+                      </div>
                     </div>
-                  </PayPalScriptProvider>
+
+                    {!termsAccepted ? (
+                      <div className="pg-billing-pay-placeholder is-consent">
+                        {t.termsRequired}
+                      </div>
+                    ) : (
+                      <PayPalScriptProvider
+                        options={{
+                          clientId: paypalClientId,
+                          currency: "USD",
+                          intent: "capture",
+                          components: "buttons",
+                        }}
+                      >
+                        <div className="pg-billing-paypal">
+                          <PayPalButtons
+                            forceReRender={[selectedDeviceId, selectedPlanId, lang, termsAccepted]}
+                            style={{
+                              layout: "vertical",
+                              shape: "rect",
+                              label: "pay",
+                              height: 45,
+                            }}
+                            createOrder={async () => {
+                              setPaypalError("");
+                              setCaptureMessage("");
+                              if (!termsAccepted) {
+                                setPaypalError(t.termsRequired);
+                                throw new Error("terms_not_accepted");
+                              }
+                              try {
+                                const response = (await apiFetch(
+                                  "/v1/billing/create-order",
+                                  {
+                                    method: "POST",
+                                    body: JSON.stringify({
+                                      deviceId: selectedDeviceId,
+                                      planId: selectedPlanId,
+                                      lang,
+                                    }),
+                                  }
+                                )) as CreateOrderResponse;
+                                return response.orderId;
+                              } catch (error) {
+                                setPaypalError(t.paymentFailed);
+                                throw error;
+                              }
+                            }}
+                            onApprove={async (data) => {
+                              try {
+                                setPaypalError("");
+                                setCaptureMessage("");
+                                await apiFetch("/v1/billing/capture-order", {
+                                  method: "POST",
+                                  body: JSON.stringify({
+                                    orderId: data.orderID,
+                                    deviceId: selectedDeviceId,
+                                    planId: selectedPlanId,
+                                    lang,
+                                  }),
+                                });
+                                setCaptureMessage(t.paymentSuccess);
+                                setTermsAccepted(false);
+                                await loadData("soft");
+                              } catch {
+                                setPaypalError(t.paymentFailed);
+                              }
+                            }}
+                            onError={() => setPaypalError(t.paymentFailed)}
+                            onCancel={() => setPaypalError("")}
+                          />
+                        </div>
+                      </PayPalScriptProvider>
+                    )}
+                  </>
                 )}
               </aside>
             </div>

@@ -83,6 +83,8 @@ const TEXT = {
     inGroup: "В группе",
     add: "Добавить",
     addFriend: "Добавить друга",
+    addHint: "Найти устройство по никнейму",
+    freeSlot: "Свободное место",
     friendNickname: "Никнейм устройства",
     search: "Найти",
     searching: "Поиск…",
@@ -145,6 +147,8 @@ const TEXT = {
     inGroup: "In group",
     add: "Add",
     addFriend: "Add a friend",
+    addHint: "Find a device by nickname",
+    freeSlot: "Available slot",
     friendNickname: "Device nickname",
     search: "Search",
     searching: "Searching…",
@@ -207,6 +211,8 @@ const TEXT = {
     inGroup: "Топта",
     add: "Қосу",
     addFriend: "Дос қосу",
+    addHint: "Құрылғыны лақап аты бойынша табу",
+    freeSlot: "Бос орын",
     friendNickname: "Құрылғының лақап аты",
     search: "Іздеу",
     searching: "Ізделуде…",
@@ -641,6 +647,16 @@ export default function ConnectPage() {
                 <div><h2>{t.group}</h2><p>{group ? `${count} / 3` : t.noGroup}</p></div>
               </div>
 
+              {canInvite ? (
+                <button type="button" className="pg-connect-add-primary" onClick={openInvite}>
+                  <span><PlusIcon /></span>
+                  <div>
+                    <strong>{t.addFriend}</strong>
+                    <small>{t.addHint}</small>
+                  </div>
+                </button>
+              ) : null}
+
               <div className="pg-connect-diagram">
                 <div className="pg-connect-lines" aria-hidden="true"><i /><i /></div>
                 <article className="pg-connect-node is-current">
@@ -670,7 +686,12 @@ export default function ConnectPage() {
                     </article>
                   ) : (
                     <button type="button" className="pg-connect-slot" onClick={openInvite} disabled={!canInvite} key={`slot-${index}`} style={{ "--member-index": index } as CSSProperties}>
-                      <span><PlusIcon /></span><strong>{t.add}</strong>
+                      <span className="pg-connect-slot-icon"><PlusIcon /></span>
+                      <span className="pg-connect-slot-copy">
+                        <small>{t.freeSlot}</small>
+                        <strong>{t.addFriend}</strong>
+                        <em>{t.addHint}</em>
+                      </span>
                     </button>
                   ))}
                 </div>
