@@ -61,3 +61,10 @@ API:
 - `npx tsc --noEmit` — успешно.
 - `npm run lint` — успешно, без предупреждений.
 - `npm run build` — успешно, все 15 маршрутов собраны.
+
+## Backend compatibility update (17 July 2026)
+
+- Billing sends `termsAccepted`, `termsVersion` and `refundPolicyVersion` to the backend.
+- Connect group names are saved through `POST /v1/user/connect/group/name` instead of being local-only.
+- Only the group owner can open free invitation slots.
+- The visible design was not changed in this compatibility patch.

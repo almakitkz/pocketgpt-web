@@ -21,6 +21,9 @@ import {
   type SiteLanguage,
 } from "@/lib/site-language";
 
+const PAYMENT_TERMS_VERSION = "2026-07-17";
+const PAYMENT_REFUND_POLICY_VERSION = "2026-07-17";
+
 type PlanKind = "requests" | "connect" | "bundle" | string;
 type PlanCategory = "requests" | "connect" | "bundle";
 
@@ -1032,6 +1035,9 @@ export default function BillingPage() {
                                       deviceId: selectedDeviceId,
                                       planId: selectedPlanId,
                                       lang,
+                                      termsAccepted: true,
+                                      termsVersion: PAYMENT_TERMS_VERSION,
+                                      refundPolicyVersion: PAYMENT_REFUND_POLICY_VERSION,
                                     }),
                                   }
                                 )) as CreateOrderResponse;
@@ -1052,6 +1058,9 @@ export default function BillingPage() {
                                     deviceId: selectedDeviceId,
                                     planId: selectedPlanId,
                                     lang,
+                                    termsAccepted: true,
+                                    termsVersion: PAYMENT_TERMS_VERSION,
+                                    refundPolicyVersion: PAYMENT_REFUND_POLICY_VERSION,
                                   }),
                                 });
                                 setCaptureMessage(t.paymentSuccess);

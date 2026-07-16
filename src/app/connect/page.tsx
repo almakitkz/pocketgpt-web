@@ -609,7 +609,7 @@ export default function ConnectPage() {
     const savedForDevice = window.localStorage.getItem(deviceKey);
     const serverName = state?.connect?.group?.name?.trim();
     const nextName =
-      savedForGroup || savedForDevice || serverName || t.defaultGroupName;
+      serverName || savedForGroup || savedForDevice || t.defaultGroupName;
 
     if (state?.connect?.group?.id && !savedForGroup && savedForDevice) {
       window.localStorage.setItem(groupKey, savedForDevice);
@@ -744,18 +744,28 @@ export default function ConnectPage() {
     }
   };
 
-  const saveGroupName = () => {
+  const saveGroupName = async () => {
     if (!selectedId) return;
     const normalized = groupNameDraft.trim().replace(/\s+/g, " ").slice(0, 32);
     if (!normalized) return;
-    const key = groupNameStorageKey(state?.connect?.group?.id, selectedId);
-    const deviceKey = groupNameStorageKey(null, selectedId);
-    window.localStorage.setItem(key, normalized);
-    window.localStorage.setItem(deviceKey, normalized);
-    setGroupName(normalized);
-    setGroupNameDraft(normalized);
-    setGroupNameOpen(false);
-    setToast(t.groupNameSaved);
+    setModalError("");
+    try {
+      await apiFetch("/v1/user/connect/group/name", {
+        method: "POST",
+        body: JSON.stringify({ deviceId: selectedId, name: normalized, lang }),
+      });
+      const key = groupNameStorageKey(state?.connect?.group?.id, selectedId);
+      const deviceKey = groupNameStorageKey(null, selectedId);
+      window.localStorage.setItem(key, normalized);
+      window.localStorage.setItem(deviceKey, normalized);
+      setGroupName(normalized);
+      setGroupNameDraft(normalized);
+      setGroupNameOpen(false);
+      setToast(t.groupNameSaved);
+      await loadData("soft", selectedId);
+    } catch (saveError) {
+      setModalError(friendlyError(saveError, lang));
+    }
   };
 
   const connectActive = Boolean(state?.connect?.active);
@@ -775,7 +785,7 @@ export default function ConnectPage() {
   );
   const count = Math.max(members.length, selected ? 1 : 0);
   const full = count >= 3;
-  const canInvite = Boolean(connectActive && selected?.nickname && !full);
+  const canInvite = Boolean(connectActive && selected?.nickname && !full && (!group || isOwner));
   const slots: Array<Member | null> = [others[0] || null, others[1] || null];
 
   const openInvite = () => {
@@ -907,6 +917,7 @@ export default function ConnectPage() {
                       <button
                         type="button"
                         onClick={() => {
+                          setModalError("");
                           setGroupNameDraft(groupName || t.defaultGroupName);
                           setGroupNameOpen(true);
                         }}
@@ -1047,13 +1058,18 @@ export default function ConnectPage() {
                 value={groupNameDraft}
                 maxLength={32}
                 onChange={(event) => setGroupNameDraft(event.target.value)}
-                onKeyDown={(event) => event.key === "Enter" && saveGroupName()}
+                onKeyDown={(event) => event.key === "Enter" && void saveGroupName()}
                 placeholder={t.groupNamePlaceholder}
               />
             </label>
+            {modalError ? (
+              <div className="pg-connect-modal-error" role="alert">
+                {modalError}
+              </div>
+            ) : null}
             <button
               type="button"
-              onClick={saveGroupName}
+              onClick={() => void saveGroupName()}
               disabled={!groupNameDraft.trim()}
             >
               {t.saveGroupName}
