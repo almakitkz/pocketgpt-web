@@ -1,10 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { apiFetch } from "@/lib/api";
 import { getToken } from "@/lib/auth";
-
-type Lang = "ru" | "en" | "kz";
+import {
+  getSiteLanguage,
+  SITE_LANGUAGE_EVENT,
+  type SiteLanguage,
+} from "@/lib/site-language";
 
 type Device = {
   id: string;
@@ -17,13 +29,10 @@ type Device = {
 
 type DeviceItem = {
   device: Device;
-  status: {
-    isPaired: boolean;
-    hasAccess: boolean;
-  };
+  status: { isPaired: boolean; hasAccess: boolean };
 };
 
-type ConnectMember = {
+type Member = {
   id: string;
   role: string;
   status: string;
@@ -31,218 +40,409 @@ type ConnectMember = {
   device: Device;
 };
 
-type ConnectGroup = {
+type Group = {
   id: string;
   name: string;
   ownerUserId: string;
   ownerDeviceId: string;
   createdAt: string | null;
-  members: ConnectMember[];
+  members: Member[];
 };
 
-type ConnectState = {
-  device?: Device;
-  connect?: {
-    active: boolean;
-    source: string | null;
-    group: ConnectGroup | null;
-  } | null;
-  invites?: ConnectInvite[];
-};
-
-type ConnectInvite = {
+type Invite = {
   id: string;
   status: string;
   createdAt: string | null;
   expiresAt: string | null;
   fromDevice: Device;
   toDevice: Device;
-  group?: {
-    id: string;
-    name: string;
-  } | null;
+  group?: { id: string; name: string } | null;
 };
+
+type ConnectState = {
+  device?: Device;
+  connect?: { active: boolean; source: string | null; group: Group | null } | null;
+  invites?: Invite[];
+};
+
+type Confirmation = { type: "remove" | "leave"; member?: Member };
 
 const TEXT = {
   ru: {
-    loading: "Загрузка...",
-    title: "PocketGPT Connect",
-    subtitle: "Объединяй до 3 устройств в одну группу и используй общую историю ответов.",
-    refresh: "Обновить",
-    refreshing: "Обновление...",
-    chooseDevice: "Устройство",
-    noDevices: "Нет привязанных устройств.",
-    nicknameTitle: "Никнейм устройства",
-    nicknameHint: "Никнейм уникален для всей системы: два устройства не могут иметь одинаковый никнейм. Максимум 15 символов: латиница, цифры, дефис, точка или подчёркивание.",
-    nicknamePlaceholder: "например alibek-pocket",
-    saveNickname: "Сохранить",
-    saving: "Сохранение...",
-    nicknameSaved: "Никнейм сохранён и закреплён за этим устройством.",
-    connectStatus: "Статус Connect",
+    title: "Connect",
+    subtitle: "До трёх PocketGPT с общей историей.",
+    device: "Устройство",
+    nickname: "Никнейм",
     active: "Активен",
-    inactive: "Не активен",
-    needConnect: "Для общей истории нужна подписка Connect или план с Connect.",
-    members: "Участники",
-    emptyMembers: "Пока нет участников Connect.",
-    inviteTitle: "Добавить устройство друга",
-    inviteHint: "Введи никнейм устройства друга. Ему придёт приглашение на сайте.",
-    searchPlaceholder: "никнейм друга",
+    inactive: "Неактивен",
+    group: "Группа",
+    myDevice: "Моё устройство",
+    participant: "Участник",
+    owner: "Владелец",
+    member: "Участник",
+    inGroup: "В группе",
+    add: "Добавить",
+    addFriend: "Добавить друга",
+    friendNickname: "Никнейм устройства",
     search: "Найти",
-    sendInvite: "Отправить приглашение",
-    sending: "Отправка...",
-    noResults: "Ничего не найдено.",
-    invites: "Входящие приглашения",
-    noInvites: "Входящих приглашений нет.",
+    searching: "Поиск…",
+    found: "Устройство найдено",
+    notFound: "Устройство не найдено",
+    send: "Отправить приглашение",
+    sending: "Отправляем…",
+    sent: "Приглашение отправлено",
+    alreadySent: "Приглашение уже отправлено",
+    invites: "Приглашения",
+    noInvites: "Новых приглашений нет",
+    from: "От",
     accept: "Принять",
     decline: "Отклонить",
-    groupLimit: "В Connect-группе максимум 3 устройства.",
+    accepting: "Принимаем…",
+    declining: "Отклоняем…",
+    accepted: "Приглашение принято",
+    declined: "Приглашение отклонено",
+    actions: "Действия",
+    remove: "Удалить из группы",
+    leave: "Выйти из группы",
+    removeTitle: "Удалить участника?",
+    removeText: "Устройство потеряет доступ к общей истории этой группы.",
+    leaveTitle: "Выйти из группы?",
+    leaveText: "Это устройство больше не будет видеть общую историю группы.",
+    cancel: "Отмена",
+    confirmRemove: "Удалить",
+    confirmLeave: "Выйти",
+    processing: "Подождите…",
+    removed: "Участник удалён",
+    left: "Устройство вышло из группы",
+    groupFull: "В группе уже 3 устройства",
+    connectInactive: "Connect не активен",
+    noNickname: "Задай никнейм в кабинете",
+    connectRequired: "Активируй Connect в разделе оплаты",
+    openBilling: "Перейти к оплате",
+    openDashboard: "Открыть кабинет",
+    noGroup: "Добавь друга, чтобы создать общую группу",
+    noDevices: "Сначала привяжи устройство",
+    pair: "Привязать устройство",
+    loadFailed: "Не удалось загрузить данные",
+    actionFailed: "Не удалось выполнить действие",
+    apiMissing: "Для этого действия требуется обновление Connect API",
+    retry: "Повторить",
+    close: "Закрыть",
     uid: "UID",
   },
   en: {
-    loading: "Loading...",
-    title: "PocketGPT Connect",
-    subtitle: "Group up to 3 devices and share answer history between them.",
-    refresh: "Refresh",
-    refreshing: "Refreshing...",
-    chooseDevice: "Device",
-    noDevices: "No paired devices.",
-    nicknameTitle: "Device nickname",
-    nicknameHint: "The nickname is unique across PocketGPT: two devices cannot use the same nickname. Max 15 characters: Latin letters, numbers, dash, dot, or underscore.",
-    nicknamePlaceholder: "example alibek-pocket",
-    saveNickname: "Save",
-    saving: "Saving...",
-    nicknameSaved: "Nickname saved and assigned to this device.",
-    connectStatus: "Connect status",
+    title: "Connect",
+    subtitle: "Up to three PocketGPT devices with shared history.",
+    device: "Device",
+    nickname: "Nickname",
     active: "Active",
     inactive: "Inactive",
-    needConnect: "Shared history requires Connect or a plan with Connect included.",
-    members: "Members",
-    emptyMembers: "No Connect members yet.",
-    inviteTitle: "Add a friend's device",
-    inviteHint: "Enter your friend's device nickname. They will receive an invite on the website.",
-    searchPlaceholder: "friend nickname",
+    group: "Group",
+    myDevice: "My device",
+    participant: "Participant",
+    owner: "Owner",
+    member: "Member",
+    inGroup: "In group",
+    add: "Add",
+    addFriend: "Add a friend",
+    friendNickname: "Device nickname",
     search: "Search",
-    sendInvite: "Send invite",
-    sending: "Sending...",
-    noResults: "Nothing found.",
-    invites: "Incoming invites",
-    noInvites: "No incoming invites.",
+    searching: "Searching…",
+    found: "Device found",
+    notFound: "Device not found",
+    send: "Send invitation",
+    sending: "Sending…",
+    sent: "Invitation sent",
+    alreadySent: "Invitation already sent",
+    invites: "Invitations",
+    noInvites: "No new invitations",
+    from: "From",
     accept: "Accept",
     decline: "Decline",
-    groupLimit: "A Connect group can have up to 3 devices.",
+    accepting: "Accepting…",
+    declining: "Declining…",
+    accepted: "Invitation accepted",
+    declined: "Invitation declined",
+    actions: "Actions",
+    remove: "Remove from group",
+    leave: "Leave group",
+    removeTitle: "Remove this member?",
+    removeText: "The device will lose access to this group's shared history.",
+    leaveTitle: "Leave the group?",
+    leaveText: "This device will no longer see the group's shared history.",
+    cancel: "Cancel",
+    confirmRemove: "Remove",
+    confirmLeave: "Leave",
+    processing: "Please wait…",
+    removed: "Member removed",
+    left: "Device left the group",
+    groupFull: "The group already has 3 devices",
+    connectInactive: "Connect is inactive",
+    noNickname: "Set a nickname in Dashboard",
+    connectRequired: "Activate Connect in Billing",
+    openBilling: "Open billing",
+    openDashboard: "Open dashboard",
+    noGroup: "Add a friend to create a shared group",
+    noDevices: "Pair a device first",
+    pair: "Pair a device",
+    loadFailed: "Could not load data",
+    actionFailed: "Could not complete the action",
+    apiMissing: "This action requires a Connect API update",
+    retry: "Try again",
+    close: "Close",
     uid: "UID",
   },
   kz: {
-    loading: "Жүктелуде...",
-    title: "PocketGPT Connect",
-    subtitle: "3 құрылғыға дейін бір топқа біріктіріп, жауап тарихын ортақ қолдан.",
-    refresh: "Жаңарту",
-    refreshing: "Жаңартылуда...",
-    chooseDevice: "Құрылғы",
-    noDevices: "Байланған құрылғы жоқ.",
-    nicknameTitle: "Құрылғының лақап аты",
-    nicknameHint: "Лақап ат бүкіл PocketGPT жүйесінде бірегей: екі құрылғы бірдей атты пайдалана алмайды. Ең көбі 15 таңба: латын әріптері, сандар, дефис, нүкте немесе төменгі сызық.",
-    nicknamePlaceholder: "мысалы alibek-pocket",
-    saveNickname: "Сақтау",
-    saving: "Сақталуда...",
-    nicknameSaved: "Лақап ат сақталып, осы құрылғыға бекітілді.",
-    connectStatus: "Connect статусы",
+    title: "Connect",
+    subtitle: "Ортақ тарихы бар үш PocketGPT құрылғысына дейін.",
+    device: "Құрылғы",
+    nickname: "Лақап ат",
     active: "Белсенді",
     inactive: "Белсенді емес",
-    needConnect: "Ортақ тарих үшін Connect жазылымы немесе Connect бар жоспар керек.",
-    members: "Қатысушылар",
-    emptyMembers: "Connect қатысушылары әзірге жоқ.",
-    inviteTitle: "Дос құрылғысын қосу",
-    inviteHint: "Досыңның құрылғы лақап атын енгіз. Оған сайтта шақыру келеді.",
-    searchPlaceholder: "дос құрылғысының лақап аты",
+    group: "Топ",
+    myDevice: "Менің құрылғым",
+    participant: "Қатысушы",
+    owner: "Иесі",
+    member: "Қатысушы",
+    inGroup: "Топта",
+    add: "Қосу",
+    addFriend: "Дос қосу",
+    friendNickname: "Құрылғының лақап аты",
     search: "Іздеу",
-    sendInvite: "Шақыру жіберу",
-    sending: "Жіберілуде...",
-    noResults: "Ештеңе табылмады.",
-    invites: "Кіріс шақырулар",
-    noInvites: "Кіріс шақыру жоқ.",
+    searching: "Ізделуде…",
+    found: "Құрылғы табылды",
+    notFound: "Құрылғы табылмады",
+    send: "Шақыру жіберу",
+    sending: "Жіберілуде…",
+    sent: "Шақыру жіберілді",
+    alreadySent: "Шақыру бұрын жіберілген",
+    invites: "Шақырулар",
+    noInvites: "Жаңа шақыру жоқ",
+    from: "Кімнен",
     accept: "Қабылдау",
     decline: "Бас тарту",
-    groupLimit: "Connect тобында максимум 3 құрылғы болады.",
+    accepting: "Қабылдануда…",
+    declining: "Қабылданбайды…",
+    accepted: "Шақыру қабылданды",
+    declined: "Шақыру қабылданбады",
+    actions: "Әрекеттер",
+    remove: "Топтан шығару",
+    leave: "Топтан шығу",
+    removeTitle: "Қатысушыны шығару керек пе?",
+    removeText: "Құрылғы осы топтың ортақ тарихына қолжетімділігін жоғалтады.",
+    leaveTitle: "Топтан шығу керек пе?",
+    leaveText: "Бұл құрылғы топтың ортақ тарихын енді көрмейді.",
+    cancel: "Болдырмау",
+    confirmRemove: "Шығару",
+    confirmLeave: "Шығу",
+    processing: "Күте тұрыңыз…",
+    removed: "Қатысушы шығарылды",
+    left: "Құрылғы топтан шықты",
+    groupFull: "Топта 3 құрылғы бар",
+    connectInactive: "Connect белсенді емес",
+    noNickname: "Лақап атты кабинетте орнат",
+    connectRequired: "Connect қызметін төлем бөлімінде қос",
+    openBilling: "Төлемге өту",
+    openDashboard: "Кабинетті ашу",
+    noGroup: "Ортақ топ құру үшін дос қос",
+    noDevices: "Алдымен құрылғыны байланыстыр",
+    pair: "Құрылғыны байланыстыру",
+    loadFailed: "Деректерді жүктеу мүмкін болмады",
+    actionFailed: "Әрекетті орындау мүмкін болмады",
+    apiMissing: "Бұл әрекет үшін Connect API жаңартуы қажет",
+    retry: "Қайталау",
+    close: "Жабу",
     uid: "UID",
   },
 } as const;
 
-function normalizeLang(value: string | null): Lang {
-  if (value === "en") return "en";
-  if (value === "kz" || value === "kk") return "kz";
-  return "ru";
+function nameOf(device?: Device | null) {
+  return device?.nickname || device?.name || "PocketGPT";
 }
 
-function getLang(): Lang {
-  if (typeof window === "undefined") return "ru";
-  return normalizeLang(localStorage.getItem("site_lang") || localStorage.getItem("lang"));
+function roleOf(role?: string | null) {
+  return String(role || "member").toLowerCase();
 }
 
-function deviceLabel(device: Device | null | undefined) {
-  if (!device) return "—";
-  return `${device.nickname || device.name || "PocketGPT"} · ${device.uid}`;
+function friendlyError(error: unknown, lang: SiteLanguage) {
+  const raw = error instanceof Error ? error.message : String(error || "");
+  const value = raw.toLowerCase();
+  const t = TEXT[lang];
+  if (value.includes("already") && value.includes("invite")) return t.alreadySent;
+  if (value.includes("group") && (value.includes("full") || value.includes("limit") || value.includes("3"))) return t.groupFull;
+  if (value.includes("connect") && (value.includes("inactive") || value.includes("required") || value.includes("subscription"))) return t.connectInactive;
+  if (value.includes("device") && value.includes("not found")) return t.notFound;
+  return raw && raw !== "Request failed" ? raw : t.actionFailed;
+}
+
+function Spinner() {
+  return <span className="pg-connect-spinner" aria-hidden="true" />;
+}
+
+function ConnectIcon() {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <circle cx="24" cy="11" r="6" />
+      <circle cx="11" cy="35" r="6" />
+      <circle cx="37" cy="35" r="6" />
+      <path d="M21 16.2 14.3 29M27 16.2 33.7 29M17 35h14" />
+    </svg>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" />
+      <path d="M10 21h4" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="m6 6 12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
+function DotsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.7" />
+      <circle cx="12" cy="12" r="1.7" />
+      <circle cx="19" cy="12" r="1.7" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function DeviceGlyph({ active = false }: { active?: boolean }) {
+  return (
+    <span className={`pg-connect-glyph ${active ? "is-active" : ""}`} aria-hidden="true">
+      <i><b /><b /><b /><b /></i>
+      <em />
+    </span>
+  );
+}
+
+function Modal({ title, closeLabel, onClose, children, className = "" }: {
+  title: string;
+  closeLabel: string;
+  onClose: () => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="pg-connect-modal-layer" onMouseDown={onClose} role="presentation">
+      <section className={`pg-connect-modal ${className}`} role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => event.stopPropagation()}>
+        <header>
+          <h2>{title}</h2>
+          <button type="button" onClick={onClose} aria-label={closeLabel}><CloseIcon /></button>
+        </header>
+        {children}
+      </section>
+    </div>
+  );
+}
+
+function Skeleton() {
+  return (
+    <div className="pg-connect-skeleton" aria-hidden="true">
+      <span />
+      <i />
+      <div><b /><b /><b /></div>
+    </div>
+  );
 }
 
 export default function ConnectPage() {
-  const [lang, setLang] = useState<Lang>("ru");
+  const [lang, setLang] = useState<SiteLanguage>("ru");
   const t = TEXT[lang];
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [errorText, setErrorText] = useState("");
+  const [softLoading, setSoftLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [modalError, setModalError] = useState("");
+  const [toast, setToast] = useState("");
   const [devices, setDevices] = useState<DeviceItem[]>([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState("");
-  const [connectState, setConnectState] = useState<ConnectState | null>(null);
-  const [searchValue, setSearchValue] = useState("");
-  const [searchResults, setSearchResults] = useState<Device[]>([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [state, setState] = useState<ConnectState | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invitesOpen, setInvitesOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Device[]>([]);
   const [searched, setSearched] = useState(false);
-  const [sendingInviteId, setSendingInviteId] = useState("");
-  const [actionMessage, setActionMessage] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [sendingId, setSendingId] = useState("");
+  const [respondingId, setRespondingId] = useState("");
+  const [menuId, setMenuId] = useState("");
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [membershipBusy, setMembershipBusy] = useState(false);
+  const selectedRef = useRef("");
+  const lastLoaded = useRef(0);
 
   useEffect(() => {
-    const updateLang = () => setLang(getLang());
-    updateLang();
-    window.addEventListener("site-language-change", updateLang);
-    return () => window.removeEventListener("site-language-change", updateLang);
+    const sync = () => setLang(getSiteLanguage());
+    sync();
+    window.addEventListener(SITE_LANGUAGE_EVENT, sync);
+    return () => window.removeEventListener(SITE_LANGUAGE_EVENT, sync);
   }, []);
 
-  const pairedDevices = useMemo(
+  const paired = useMemo(
     () => devices.filter((item) => item.status.isPaired && !item.device.disabled),
     [devices]
   );
 
-  const selectedDevice = useMemo(
-    () => pairedDevices.find((item) => item.device.id === selectedDeviceId)?.device || null,
-    [pairedDevices, selectedDeviceId]
+  const selected = useMemo(
+    () => paired.find((item) => item.device.id === selectedId)?.device || null,
+    [paired, selectedId]
   );
 
-  async function loadData(showLoader = false, forcedDeviceId?: string) {
-    if (showLoader) setLoading(true);
-    else setRefreshing(true);
-    setErrorText("");
-
+  const loadData = useCallback(async (mode: "initial" | "soft" = "soft", forcedId?: string) => {
+    if (mode === "initial") setLoading(true);
+    else setSoftLoading(true);
+    setError("");
     try {
-      const devicesData = await apiFetch("/v1/user/devices", { method: "GET" });
-      const nextDevices = (devicesData.devices || []) as DeviceItem[];
-      setDevices(nextDevices);
-
-      const nextSelected = forcedDeviceId || selectedDeviceId || nextDevices.find((item) => item.status.isPaired && !item.device.disabled)?.device.id || "";
-      setSelectedDeviceId(nextSelected);
-
-      if (nextSelected) {
-        const state = (await apiFetch(`/v1/user/connect?deviceId=${encodeURIComponent(nextSelected)}`, { method: "GET" })) as ConnectState;
-        setConnectState(state);
+      const devicesResponse = await apiFetch("/v1/user/devices", { method: "GET" });
+      const next = (devicesResponse.devices || []) as DeviceItem[];
+      setDevices(next);
+      const first = next.find((item) => item.status.isPaired && !item.device.disabled)?.device.id || "";
+      const candidate = forcedId || selectedRef.current;
+      const nextId = next.some((item) => item.device.id === candidate && item.status.isPaired && !item.device.disabled) ? candidate : first;
+      selectedRef.current = nextId;
+      setSelectedId(nextId);
+      if (nextId) {
+        setState(await apiFetch(`/v1/user/connect?deviceId=${encodeURIComponent(nextId)}`, { method: "GET" }) as ConnectState);
       } else {
-        setConnectState(null);
+        setState(null);
       }
-    } catch (err) {
-      setErrorText(err instanceof Error ? err.message : "Load failed");
+      lastLoaded.current = Date.now();
+    } catch (loadError) {
+      setError(friendlyError(loadError, lang) || t.loadFailed);
     } finally {
       setLoading(false);
-      setRefreshing(false);
+      setSoftLoading(false);
     }
-  }
+  }, [lang, t.loadFailed]);
 
   useEffect(() => {
     if (!getToken()) {
@@ -250,209 +450,293 @@ export default function ConnectPage() {
       return;
     }
     setReady(true);
-    void loadData(true);
-  }, []);
+    void loadData("initial");
+  }, [loadData]);
 
-  async function handleChangeDevice(deviceId: string) {
-    setSelectedDeviceId(deviceId);
-    setSearchResults([]);
+  useEffect(() => {
+    const refreshIfStale = () => {
+      if (Date.now() - lastLoaded.current > 20_000) void loadData("soft");
+    };
+    const onVisibility = () => document.visibilityState === "visible" && refreshIfStale();
+    window.addEventListener("focus", refreshIfStale);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", refreshIfStale);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [loadData]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(""), 3200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const changeDevice = async (id: string) => {
+    selectedRef.current = id;
+    setSelectedId(id);
+    setResults([]);
     setSearched(false);
-    setActionMessage("");
-    await loadData(false, deviceId);
-  }
+    setMenuId("");
+    await loadData("soft", id);
+  };
 
-  async function handleSearch() {
-    if (!searchValue.trim()) return;
+  const search = async () => {
+    const nickname = query.trim().toLowerCase();
+    if (!nickname) return;
+    setSearching(true);
+    setModalError("");
+    setSearched(true);
     try {
-      setErrorText("");
-      setActionMessage("");
-      setSearched(true);
-      const data = await apiFetch(`/v1/user/device/search?nickname=${encodeURIComponent(searchValue.trim())}`, { method: "GET" });
-      setSearchResults((data.devices || []) as Device[]);
-    } catch (err) {
-      setSearchResults([]);
-      setErrorText(err instanceof Error ? err.message : "Search failed");
+      const response = await apiFetch(`/v1/user/device/search?nickname=${encodeURIComponent(nickname)}`, { method: "GET" });
+      setResults(((response.devices || []) as Device[]).filter((device) => device.id !== selectedId));
+    } catch (searchError) {
+      setResults([]);
+      const message = friendlyError(searchError, lang);
+      if (message !== t.notFound) setModalError(message);
+    } finally {
+      setSearching(false);
     }
-  }
+  };
 
-  async function handleInvite(device: Device) {
-    if (!selectedDeviceId || !device.nickname) return;
+  const invite = async (device: Device) => {
+    if (!selectedId || !device.nickname) return;
+    setSendingId(device.id);
+    setModalError("");
     try {
-      setSendingInviteId(device.id);
-      setErrorText("");
-      setActionMessage("");
       await apiFetch("/v1/user/connect/invite", {
         method: "POST",
-        body: JSON.stringify({ deviceId: selectedDeviceId, nickname: device.nickname, lang }),
+        body: JSON.stringify({ deviceId: selectedId, nickname: device.nickname, lang }),
       });
-      setActionMessage(lang === "en" ? "Invite sent." : lang === "kz" ? "Шақыру жіберілді." : "Приглашение отправлено.");
-      setSearchResults([]);
-      setSearchValue("");
-      await loadData(false, selectedDeviceId);
-    } catch (err) {
-      setErrorText(err instanceof Error ? err.message : "Invite failed");
+      setInviteOpen(false);
+      setQuery("");
+      setResults([]);
+      setSearched(false);
+      setToast(t.sent);
+      await loadData("soft", selectedId);
+    } catch (inviteError) {
+      setModalError(friendlyError(inviteError, lang));
     } finally {
-      setSendingInviteId("");
+      setSendingId("");
     }
-  }
+  };
 
-  async function respondInvite(inviteId: string, accept: boolean) {
+  const respond = async (inviteId: string, accept: boolean) => {
+    const actionId = `${inviteId}:${accept ? "accept" : "decline"}`;
+    setRespondingId(actionId);
+    setModalError("");
     try {
-      setErrorText("");
-      setActionMessage("");
       await apiFetch(`/v1/user/connect/invites/${inviteId}/${accept ? "accept" : "decline"}`, { method: "POST" });
-      setActionMessage(accept ? (lang === "en" ? "Invite accepted." : lang === "kz" ? "Шақыру қабылданды." : "Приглашение принято.") : (lang === "en" ? "Invite declined." : lang === "kz" ? "Шақыру қабылданбады." : "Приглашение отклонено."));
-      await loadData(false, selectedDeviceId);
-    } catch (err) {
-      setErrorText(err instanceof Error ? err.message : "Action failed");
+      setToast(accept ? t.accepted : t.declined);
+      await loadData("soft", selectedId);
+    } catch (respondError) {
+      setModalError(friendlyError(respondError, lang));
+    } finally {
+      setRespondingId("");
     }
-  }
+  };
 
-  const members = connectState?.connect?.group?.members || [];
-  const invites = connectState?.invites || [];
-  const connectActive = !!connectState?.connect?.active;
+  const membershipAction = async () => {
+    if (!confirmation || !selectedId) return;
+    setMembershipBusy(true);
+    setError("");
+    try {
+      if (confirmation.type === "remove" && confirmation.member) {
+        await apiFetch("/v1/user/connect/member/remove", {
+          method: "POST",
+          body: JSON.stringify({ deviceId: selectedId, memberId: confirmation.member.id }),
+        });
+        setToast(t.removed);
+      } else {
+        await apiFetch("/v1/user/connect/leave", {
+          method: "POST",
+          body: JSON.stringify({ deviceId: selectedId }),
+        });
+        setToast(t.left);
+      }
+      setConfirmation(null);
+      setMenuId("");
+      await loadData("soft", selectedId);
+    } catch (membershipError) {
+      const raw = membershipError instanceof Error ? membershipError.message.toLowerCase() : "";
+      setError(raw.includes("not found") || raw.includes("404") || raw.includes("method not allowed") ? t.apiMissing : friendlyError(membershipError, lang));
+      setConfirmation(null);
+    } finally {
+      setMembershipBusy(false);
+    }
+  };
 
-  if (!ready) {
-    return (
-      <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-6 text-white sm:px-6 sm:py-10">
-        <div className="mx-auto max-w-[1150px]">{t.loading}</div>
-      </main>
-    );
-  }
+  const connectActive = Boolean(state?.connect?.active);
+  const group = state?.connect?.group || null;
+  const members = group?.members || [];
+  const currentMember = members.find((member) => member.device.id === selectedId) || null;
+  const others = members.filter((member) => member.device.id !== selectedId).slice(0, 2);
+  const isOwner = group?.ownerDeviceId === selectedId || roleOf(currentMember?.role) === "owner";
+  const pendingInvites = (state?.invites || []).filter((invite) => roleOf(invite.status) === "pending");
+  const count = Math.max(members.length, selected ? 1 : 0);
+  const full = count >= 3;
+  const canInvite = Boolean(connectActive && selected?.nickname && !full);
+  const slots: Array<Member | null> = [others[0] || null, others[1] || null];
+
+  const openInvite = () => {
+    if (!connectActive) return setError(t.connectInactive);
+    if (!selected?.nickname) return setError(t.noNickname);
+    if (full) return setError(t.groupFull);
+    setError("");
+    setModalError("");
+    setInviteOpen(true);
+  };
+
+  if (!ready) return <main className="pg-connect-page" aria-busy="true" />;
 
   return (
-    <main className="min-h-[calc(100vh-73px)] bg-[#050816] px-4 py-6 text-white sm:px-6 sm:py-10">
-      <div className="mx-auto w-full max-w-[1150px] space-y-5">
-        <section className="rounded-3xl border border-[#1f2937] bg-gradient-to-br from-[#111827] to-[#0b1220] p-5 sm:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="mb-2 text-3xl font-bold">{t.title}</h1>
-              <p className="text-sm text-[#a1a1aa] sm:text-base">{t.subtitle}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void loadData(false, selectedDeviceId)}
-              className="rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 font-semibold text-white transition hover:border-[#4b5563] hover:bg-[#0f172a]"
-            >
-              {refreshing ? t.refreshing : t.refresh}
+    <main className="pg-connect-page">
+      <div className="pg-connect-grid" aria-hidden="true" />
+      <div className="pg-connect-glow" aria-hidden="true" />
+      <div className="pg-connect-shell">
+        <header className="pg-connect-head">
+          <div><h1>{t.title}</h1><p>{t.subtitle}</p></div>
+          {softLoading ? <Spinner /> : null}
+        </header>
+
+        {error ? (
+          <div className="pg-connect-message" role="alert">
+            <span>{error}</span>
+            <button type="button" onClick={() => error === t.loadFailed ? void loadData("soft") : setError("")} aria-label={t.close}>
+              {error === t.loadFailed ? t.retry : <CloseIcon />}
             </button>
           </div>
-        </section>
+        ) : null}
+        {toast ? <div className="pg-connect-toast" role="status"><i />{toast}</div> : null}
 
-        {errorText ? <div className="rounded-2xl border border-[#7f1d1d] bg-[#3f1d1d] p-4 text-sm text-[#fecaca]">{errorText}</div> : null}
-        {actionMessage ? <div className="rounded-2xl border border-[#14532d] bg-[#0f2f1d] p-4 text-sm text-[#bbf7d0]">{actionMessage}</div> : null}
-
-        <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="space-y-5">
-            <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-              <h2 className="mb-4 text-2xl font-semibold">{t.chooseDevice}</h2>
-              {loading ? <div className="text-[#a1a1aa]">{t.loading}</div> : null}
-              {!loading && pairedDevices.length === 0 ? <div className="text-[#a1a1aa]">{t.noDevices}</div> : null}
-
-              <select
-                value={selectedDeviceId}
-                onChange={(e) => void handleChangeDevice(e.target.value)}
-                className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition focus:border-blue-500"
-              >
-                <option value="">{t.chooseDevice}</option>
-                {pairedDevices.map((item) => (
-                  <option key={item.device.id} value={item.device.id}>{deviceLabel(item.device)}</option>
-                ))}
-              </select>
-
-              {selectedDevice ? (
-                <div className="mt-4 rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4 text-sm leading-7 text-[#d1d5db]">
-                  <div>{t.uid}: {selectedDevice.uid}</div>
-                  <div>{t.nicknameTitle}: {selectedDevice.nickname || "—"}</div>
-                </div>
-              ) : null}
-            </div>
-
-
-            <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-              <h2 className="mb-2 text-2xl font-semibold">{t.connectStatus}</h2>
-              <div className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${connectActive ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}>
-                {connectActive ? t.active : t.inactive}
-              </div>
-              {!connectActive ? <p className="mt-3 text-sm text-[#a1a1aa]">{t.needConnect}</p> : null}
-              <p className="mt-3 text-sm text-[#94a3b8]">{t.groupLimit}</p>
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-              <h2 className="mb-2 text-2xl font-semibold">{t.members}</h2>
-              {members.length === 0 ? <div className="text-[#a1a1aa]">{t.emptyMembers}</div> : null}
-              <div className="grid gap-3">
-                {members.map((member) => (
-                  <div key={member.id} className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4">
-                    <div className="font-bold text-white">{deviceLabel(member.device)}</div>
-                    <div className="mt-1 text-sm text-[#94a3b8]">{member.role} · {member.status}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-              <h2 className="mb-2 text-2xl font-semibold">{t.inviteTitle}</h2>
-              <p className="mb-4 text-sm text-[#a1a1aa]">{t.inviteHint}</p>
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                <input
-                  value={searchValue}
-                  maxLength={15}
-                  onChange={(e) => setSearchValue(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""))}
-                  placeholder={t.searchPlaceholder}
-                  className="w-full rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 text-white outline-none transition placeholder:text-[#6b7280] focus:border-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleSearch()}
-                  disabled={!searchValue.trim()}
-                  className="rounded-xl border border-[#374151] bg-[#0b1220] px-4 py-3 font-semibold text-white transition hover:border-[#4b5563] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {t.search}
+        {loading ? <Skeleton /> : paired.length === 0 ? (
+          <section className="pg-connect-empty"><ConnectIcon /><h2>{t.noDevices}</h2><Link href="/pair" className="pg-button pg-button-primary">{t.pair}</Link></section>
+        ) : (
+          <>
+            <section className="pg-connect-toolbar">
+              <label>
+                <span>{t.device}</span>
+                <select value={selectedId} onChange={(event) => void changeDevice(event.target.value)}>
+                  {paired.map((item) => <option key={item.device.id} value={item.device.id}>{nameOf(item.device)}</option>)}
+                </select>
+              </label>
+              <div className="pg-connect-toolbar-info">
+                <div><span>{t.nickname}</span><strong>{selected?.nickname || "—"}</strong></div>
+                <span className={`pg-connect-status is-${connectActive ? "active" : "inactive"}`}><i />{connectActive ? t.active : t.inactive}</span>
+                <button type="button" className="pg-connect-bell" onClick={() => { setModalError(""); setInvitesOpen(true); }} aria-label={`${t.invites}: ${pendingInvites.length}`}>
+                  <BellIcon />{pendingInvites.length > 0 ? <b>{pendingInvites.length}</b> : null}
                 </button>
               </div>
+            </section>
 
-              <div className="mt-4 grid gap-3">
-                {searched && searchResults.length === 0 ? <div className="text-sm text-[#a1a1aa]">{t.noResults}</div> : null}
-                {searchResults.map((device) => (
-                  <div key={device.id} className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4">
-                    <div className="font-bold text-white">{deviceLabel(device)}</div>
-                    <button
-                      type="button"
-                      onClick={() => void handleInvite(device)}
-                      disabled={!connectActive || sendingInviteId === device.id}
-                      className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {sendingInviteId === device.id ? t.sending : t.sendInvite}
+            {!connectActive ? (
+              <section className="pg-connect-note"><span><i />{t.connectRequired}</span><Link href="/billing">{t.openBilling}</Link></section>
+            ) : !selected?.nickname ? (
+              <section className="pg-connect-note"><span><i />{t.noNickname}</span><Link href="/dashboard">{t.openDashboard}</Link></section>
+            ) : null}
+
+            <section className="pg-connect-group">
+              <div className="pg-connect-group-title">
+                <span><ConnectIcon /></span>
+                <div><h2>{t.group}</h2><p>{group ? `${count} / 3` : t.noGroup}</p></div>
+              </div>
+
+              <div className="pg-connect-diagram">
+                <div className="pg-connect-lines" aria-hidden="true"><i /><i /></div>
+                <article className="pg-connect-node is-current">
+                  <DeviceGlyph active={connectActive} />
+                  <div><span>{t.myDevice}</span><strong>{nameOf(selected)}</strong><small>{isOwner ? t.owner : t.member}</small></div>
+                  <em className={connectActive ? "is-online" : "is-offline"}><i />{connectActive ? t.inGroup : t.inactive}</em>
+                  {!isOwner && currentMember ? (
+                    <div className="pg-connect-node-menu">
+                      <button type="button" onClick={() => setMenuId(menuId === currentMember.id ? "" : currentMember.id)} aria-label={t.actions}><DotsIcon /></button>
+                      {menuId === currentMember.id ? <div><button type="button" onClick={() => setConfirmation({ type: "leave" })}>{t.leave}</button></div> : null}
+                    </div>
+                  ) : null}
+                </article>
+
+                <div className="pg-connect-members">
+                  {slots.map((member, index) => member ? (
+                    <article className="pg-connect-node is-member" key={member.id} style={{ "--member-index": index } as CSSProperties}>
+                      <DeviceGlyph active />
+                      <div><span>{t.participant}</span><strong>{nameOf(member.device)}</strong><small>{roleOf(member.role) === "owner" ? t.owner : t.member}</small></div>
+                      <em className="is-online"><i />{t.inGroup}</em>
+                      {isOwner ? (
+                        <div className="pg-connect-node-menu">
+                          <button type="button" onClick={() => setMenuId(menuId === member.id ? "" : member.id)} aria-label={t.actions}><DotsIcon /></button>
+                          {menuId === member.id ? <div><button type="button" onClick={() => setConfirmation({ type: "remove", member })}>{t.remove}</button></div> : null}
+                        </div>
+                      ) : null}
+                    </article>
+                  ) : (
+                    <button type="button" className="pg-connect-slot" onClick={openInvite} disabled={!canInvite} key={`slot-${index}`} style={{ "--member-index": index } as CSSProperties}>
+                      <span><PlusIcon /></span><strong>{t.add}</strong>
                     </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            </section>
+          </>
+        )}
+      </div>
 
-            <div className="rounded-3xl border border-[#1f2937] bg-[#111827] p-5 sm:p-6">
-              <h2 className="mb-2 text-2xl font-semibold">{t.invites}</h2>
-              {invites.length === 0 ? <div className="text-[#a1a1aa]">{t.noInvites}</div> : null}
-              <div className="grid gap-3">
-                {invites.map((invite) => (
-                  <div key={invite.id} className="rounded-2xl border border-[#1f2937] bg-[#0b1220] p-4">
-                    <div className="font-bold text-white">{deviceLabel(invite.fromDevice)}</div>
-                    <div className="mt-1 text-sm text-[#94a3b8]">{invite.status}</div>
-                    {invite.status === "pending" ? (
-                      <div className="mt-3 flex gap-2">
-                        <button type="button" onClick={() => void respondInvite(invite.id, true)} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">{t.accept}</button>
-                        <button type="button" onClick={() => void respondInvite(invite.id, false)} className="rounded-xl border border-[#374151] px-4 py-2 text-sm font-semibold text-white hover:bg-white/5">{t.decline}</button>
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
+      {inviteOpen ? (
+        <Modal title={t.addFriend} closeLabel={t.close} onClose={() => { setInviteOpen(false); setModalError(""); }}>
+          <div className="pg-connect-invite-form">
+            <label>
+              <span>{t.friendNickname}</span>
+              <div>
+                <input autoFocus value={query} maxLength={15} onChange={(event) => { setQuery(event.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, "")); setResults([]); setSearched(false); setModalError(""); }} onKeyDown={(event) => event.key === "Enter" && void search()} placeholder="alibek-pocket" autoComplete="off" spellCheck={false} />
+                <button type="button" onClick={() => void search()} disabled={!query.trim() || searching}>{searching ? <Spinner /> : null}{searching ? t.searching : t.search}</button>
               </div>
+            </label>
+            {modalError ? <div className="pg-connect-modal-error" role="alert">{modalError}</div> : null}
+            {searched && results.length === 0 && !searching ? <div className="pg-connect-search-empty">{t.notFound}</div> : null}
+            {results.map((device) => (
+              <article className="pg-connect-search-result" key={device.id}>
+                <DeviceGlyph active />
+                <div><span>{t.found}</span><strong>{nameOf(device)}</strong><small>{t.uid}: {device.uid}</small></div>
+                <button type="button" onClick={() => void invite(device)} disabled={sendingId === device.id}>{sendingId === device.id ? <Spinner /> : null}{sendingId === device.id ? t.sending : t.send}</button>
+              </article>
+            ))}
+          </div>
+        </Modal>
+      ) : null}
+
+      {invitesOpen ? (
+        <Modal title={t.invites} closeLabel={t.close} onClose={() => { setInvitesOpen(false); setModalError(""); }} className="is-wide">
+          <div className="pg-connect-invites">
+            {modalError ? <div className="pg-connect-modal-error" role="alert">{modalError}</div> : null}
+            {pendingInvites.length === 0 ? <div className="pg-connect-no-invites"><BellIcon /><span>{t.noInvites}</span></div> : pendingInvites.map((inviteItem) => {
+              const accepting = respondingId === `${inviteItem.id}:accept`;
+              const declining = respondingId === `${inviteItem.id}:decline`;
+              return (
+                <article key={inviteItem.id}>
+                  <DeviceGlyph active />
+                  <div><span>{t.from}</span><strong>{nameOf(inviteItem.fromDevice)}</strong><small>{inviteItem.fromDevice.uid}</small></div>
+                  <div className="pg-connect-invite-actions">
+                    <button type="button" className="is-accept" onClick={() => void respond(inviteItem.id, true)} disabled={accepting || declining}>{accepting ? <Spinner /> : null}{accepting ? t.accepting : t.accept}</button>
+                    <button type="button" onClick={() => void respond(inviteItem.id, false)} disabled={accepting || declining}>{declining ? <Spinner /> : null}{declining ? t.declining : t.decline}</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </Modal>
+      ) : null}
+
+      {confirmation ? (
+        <Modal title={confirmation.type === "remove" ? t.removeTitle : t.leaveTitle} closeLabel={t.close} onClose={() => !membershipBusy && setConfirmation(null)} className="is-confirm">
+          <div className="pg-connect-confirm">
+            <p>{confirmation.type === "remove" ? t.removeText : t.leaveText}</p>
+            {confirmation.member ? <strong>{nameOf(confirmation.member.device)}</strong> : null}
+            <div>
+              <button type="button" onClick={() => setConfirmation(null)} disabled={membershipBusy}>{t.cancel}</button>
+              <button type="button" className="is-danger" onClick={() => void membershipAction()} disabled={membershipBusy}>{membershipBusy ? <Spinner /> : null}{membershipBusy ? t.processing : confirmation.type === "remove" ? t.confirmRemove : t.confirmLeave}</button>
             </div>
           </div>
-        </section>
-      </div>
+        </Modal>
+      ) : null}
     </main>
   );
 }

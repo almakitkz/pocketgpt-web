@@ -37,7 +37,6 @@ const PENDING_DEVICE_KEY = "pocketgpt_pending_nickname";
 
 const TEXT = {
   ru: {
-    eyebrow: "НАСТРОЙКА УСТРОЙСТВА",
     title: "Подключи PocketGPT",
     subtitle: "Два коротких шага — код с экрана и уникальный никнейм.",
     codeStep: "Код",
@@ -74,7 +73,6 @@ const TEXT = {
     nicknameFailed: "Не удалось сохранить никнейм",
   },
   en: {
-    eyebrow: "DEVICE SETUP",
     title: "Connect PocketGPT",
     subtitle: "Two quick steps — the on-screen code and a unique nickname.",
     codeStep: "Code",
@@ -111,7 +109,6 @@ const TEXT = {
     nicknameFailed: "Could not save the nickname",
   },
   kz: {
-    eyebrow: "ҚҰРЫЛҒЫНЫ БАПТАУ",
     title: "PocketGPT құрылғысын қос",
     subtitle: "Екі қысқа қадам — экрандағы код және бірегей лақап ат.",
     codeStep: "Код",
@@ -448,8 +445,7 @@ export default function PairPage() {
 
         <section className="pg-pair-panel">
           <header className="pg-pair-head">
-            <div className="pg-dashboard-eyebrow">{t.eyebrow}</div>
-            <h1>{t.title}</h1>
+<h1>{t.title}</h1>
             <p>{t.subtitle}</p>
           </header>
 

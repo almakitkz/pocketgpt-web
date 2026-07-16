@@ -11,7 +11,6 @@ import {
 
 const TEXT = {
   ru: {
-    eyebrow: "ГОЛОСОВОЙ AI / КАРМАННЫЙ ФОРМАТ",
     titleStart: "AI, который",
     titleAccent: "всегда рядом.",
     description: "Компактное устройство: спроси голосом, получи точный ответ прямо на экране.",
@@ -26,7 +25,6 @@ const TEXT = {
     deviceLabel: "POCKET VOICE TERMINAL",
   },
   en: {
-    eyebrow: "VOICE AI / POCKET FORMAT",
     titleStart: "AI that stays",
     titleAccent: "close to you.",
     description: "A compact device: ask by voice and get a precise answer directly on the screen.",
@@ -41,7 +39,6 @@ const TEXT = {
     deviceLabel: "POCKET VOICE TERMINAL",
   },
   kz: {
-    eyebrow: "ДАУЫСТЫҚ AI / ҚАЛТАЛЫҚ ФОРМАТ",
     titleStart: "Әрдайым жаныңдағы",
     titleAccent: "жасанды интеллект.",
     description: "Ықшам құрылғы: дауыспен сұра да, нақты жауапты экраннан бірден ал.",
@@ -165,12 +162,7 @@ export default function Home() {
       <div className="pg-home-container">
         <section className="pg-hero">
           <div className="pg-hero-copy">
-            <div className="pg-eyebrow">
-              <span className="pg-eyebrow-mark" />
-              {t.eyebrow}
-            </div>
-
-            <h1 className="pg-hero-title">
+<h1 className="pg-hero-title">
               <span>{t.titleStart}</span>
               <span className="pg-hero-title-accent">{t.titleAccent}</span>
             </h1>

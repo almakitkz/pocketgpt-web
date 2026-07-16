@@ -141,7 +141,6 @@ type CreateOrderResponse = {
 
 const TEXT = {
   ru: {
-    eyebrow: "ОПЛАТА / ДОСТУП",
     title: "Оплата",
     subtitle: "Выбери устройство и подходящий тариф.",
     device: "Устройство",
@@ -202,7 +201,6 @@ const TEXT = {
     uid: "UID",
   },
   en: {
-    eyebrow: "BILLING / ACCESS",
     title: "Billing",
     subtitle: "Choose a device and the right plan.",
     device: "Device",
@@ -263,7 +261,6 @@ const TEXT = {
     uid: "UID",
   },
   kz: {
-    eyebrow: "ТӨЛЕМ / ҚОЛЖЕТІМ",
     title: "Төлем",
     subtitle: "Құрылғы мен қолайлы тарифті таңда.",
     device: "Құрылғы",
@@ -691,8 +688,7 @@ export default function BillingPage() {
       <div className="pg-billing-shell">
         <header className="pg-billing-head">
           <div>
-            <span className="pg-eyebrow">{t.eyebrow}</span>
-            <h1>{t.title}</h1>
+<h1>{t.title}</h1>
             <p>{t.subtitle}</p>
           </div>
           {softLoading ? (
@@ -1015,7 +1011,7 @@ export default function BillingPage() {
                             });
                             setCaptureMessage(t.paymentSuccess);
                             await loadData("soft");
-                          } catch (error) {
+                          } catch {
                             setPaypalError(t.paymentFailed);
                           }
                         }}

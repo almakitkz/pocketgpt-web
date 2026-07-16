@@ -22,7 +22,7 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     throw new Error(
-      data?.error?.message || data?.error?.code || data?.message || "Request failed"
+      data?.error?.message || data?.error?.code || data?.detail || data?.message || "Request failed"
     );
   }
 

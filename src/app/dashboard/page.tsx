@@ -104,7 +104,6 @@ type LocalUser = {
 
 const TEXT = {
   ru: {
-    eyebrow: "АККАУНТ / УСТРОЙСТВА",
     title: "Кабинет",
     subtitle: "Твои устройства PocketGPT в одном месте.",
     devices: "Устройства",
@@ -174,7 +173,6 @@ const TEXT = {
     deviceFallback: "PocketGPT",
   },
   en: {
-    eyebrow: "ACCOUNT / DEVICES",
     title: "Dashboard",
     subtitle: "Your PocketGPT devices in one place.",
     devices: "Devices",
@@ -244,7 +242,6 @@ const TEXT = {
     deviceFallback: "PocketGPT",
   },
   kz: {
-    eyebrow: "АККАУНТ / ҚҰРЫЛҒЫЛАР",
     title: "Жеке кабинет",
     subtitle: "PocketGPT құрылғыларың бір жерде.",
     devices: "Құрылғылар",
@@ -588,8 +585,7 @@ export default function DashboardPage() {
       <div className="pg-dashboard-inner">
         <header className="pg-dashboard-head">
           <div>
-            <div className="pg-dashboard-eyebrow">{t.eyebrow}</div>
-            <h1>{t.title}</h1>
+<h1>{t.title}</h1>
             <p>{t.subtitle}</p>
           </div>
 
