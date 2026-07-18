@@ -20,10 +20,11 @@ import {
   SITE_LANGUAGE_EVENT,
   type SiteLanguage,
 } from "@/lib/site-language";
-
-const PAYMENT_TERMS_VERSION = "2026-07-17";
-const PAYMENT_REFUND_POLICY_VERSION = "2026-07-17";
-const PAYMENT_RECURRING_TERMS_VERSION = "2026-07-18";
+import {
+  PAYMENT_REFUND_POLICY_VERSION,
+  PAYMENT_RECURRING_TERMS_VERSION,
+  PAYMENT_TERMS_VERSION,
+} from "@/lib/legal";
 
 type PlanKind = "requests" | "connect" | "bundle" | string;
 type PlanCategory = "requests" | "connect" | "bundle";
@@ -210,11 +211,11 @@ const TEXT = {
     selectPlanFirst: "Выбери тариф",
     paypalMissing: "PayPal пока не настроен",
     acceptPrefix: "Я прочитал и принимаю",
-    paymentTerms: "Условия оплаты",
+    paymentTerms: "Пользовательское соглашение",
     and: "и",
     refundPolicy: "Политику возврата",
     termsRequired: "Подтверди согласие с условиями и ежемесячным автопродлением",
-    recurringConsent: "Я оформляю ежемесячную подписку и разрешаю PayPal автоматически списывать стоимость тарифа каждый месяц до отмены.",
+    recurringConsent: "Я понимаю, что подписка автоматически продлевается каждый месяц до отмены. PayPal будет списывать показанную сумму; после отмены доступ сохранится до конца оплаченного периода.",
     monthly: "в месяц",
     paypalCharge: "Списание PayPal",
     paypalCurrencyNotice: "PayPal проводит регулярное списание в USD. Точная сумма показывается до подтверждения; банк может применить конвертацию.",
@@ -291,11 +292,11 @@ const TEXT = {
     selectPlanFirst: "Select a plan",
     paypalMissing: "PayPal is not configured yet",
     acceptPrefix: "I have read and accept the",
-    paymentTerms: "Payment Terms",
+    paymentTerms: "User Agreement and Subscription Terms",
     and: "and",
     refundPolicy: "Refund Policy",
     termsRequired: "Accept the terms and monthly automatic renewal",
-    recurringConsent: "I am starting a monthly subscription and authorize PayPal to charge the selected plan automatically every month until I cancel.",
+    recurringConsent: "I understand that the subscription renews automatically every month until cancelled. PayPal will charge the displayed amount, and access remains available through the paid period after cancellation.",
     monthly: "per month",
     paypalCharge: "PayPal charge",
     paypalCurrencyNotice: "PayPal processes the recurring charge in USD. The exact amount is shown before approval; your bank may apply currency conversion.",
@@ -372,11 +373,11 @@ const TEXT = {
     selectPlanFirst: "Тарифті таңда",
     paypalMissing: "PayPal әзірге бапталмаған",
     acceptPrefix: "Мен оқып, қабылдаймын",
-    paymentTerms: "Төлем шарттарын",
+    paymentTerms: "Пайдаланушы келісімі мен жазылым шарттарын",
     and: "және",
     refundPolicy: "Қайтару саясатын",
     termsRequired: "Шарттар мен ай сайынғы автоматты ұзартуға келісуді раста",
-    recurringConsent: "Мен ай сайынғы жазылымды рәсімдеймін және PayPal-ға тариф құнын бас тартқанға дейін ай сайын автоматты түрде алуға рұқсат беремін.",
+    recurringConsent: "Мен жазылымның бас тартқанға дейін ай сайын автоматты түрде ұзартылатынын түсінемін. PayPal көрсетілген соманы алады, ал бас тартқаннан кейін қолжетімділік төленген кезең соңына дейін сақталады.",
     monthly: "айына",
     paypalCharge: "PayPal төлемі",
     paypalCurrencyNotice: "PayPal тұрақты төлемді USD валютасында жүргізеді. Нақты сома растау алдында көрсетіледі; банк валюта айырбастауды қолдануы мүмкін.",
