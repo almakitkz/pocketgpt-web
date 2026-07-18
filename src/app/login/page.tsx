@@ -147,7 +147,7 @@ export default function LoginPage() {
         saveAuthFallback(token, data?.user ?? null);
       }
 
-      window.location.href = "/dashboard";
+      window.location.href = data?.user?.isAdmin ? "/admin/ota" : "/dashboard";
     } catch (err) {
       setErrorText(err instanceof Error ? err.message : t.fallbackError);
     } finally {

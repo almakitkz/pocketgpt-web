@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { getToken, logout } from "@/lib/auth";
+import { getToken, getUser, logout } from "@/lib/auth";
 import {
   getSiteLanguage,
   saveSiteLanguage,
@@ -29,6 +29,7 @@ const NAV_TEXT = {
     legal: "Документы",
     terms: "Условия",
     refund: "Возврат",
+    admin: "Admin Office",
   },
   en: {
     home: "Home",
@@ -47,6 +48,7 @@ const NAV_TEXT = {
     legal: "Documents",
     terms: "Terms",
     refund: "Refunds",
+    admin: "Admin Office",
   },
   kz: {
     home: "Басты бет",
@@ -65,6 +67,7 @@ const NAV_TEXT = {
     legal: "Құжаттар",
     terms: "Шарттар",
     refund: "Қайтару",
+    admin: "Admin Office",
   },
 } as const;
 
@@ -74,7 +77,7 @@ const LANGUAGES: { code: SiteLanguage; label: string; short: string }[] = [
   { code: "kz", label: "Қазақша", short: "KZ" },
 ];
 
-type NavIconName = "home" | "dashboard" | "pair" | "billing" | "connect" | "login" | "signup";
+type NavIconName = "home" | "dashboard" | "pair" | "billing" | "connect" | "login" | "signup" | "admin";
 
 type NavItem = {
   href: string;
@@ -128,6 +131,7 @@ function NavIcon({ name }: { name: NavIconName }) {
       {name === "connect" ? <><circle cx="12" cy="5.5" r="2.2" {...common} /><circle cx="5.5" cy="18" r="2.2" {...common} /><circle cx="18.5" cy="18" r="2.2" {...common} /><path d="m10.7 7.3-4 8.5M13.3 7.3l4 8.5M7.7 18h8.6" {...common} /></> : null}
       {name === "login" ? <><path d="M10 5H6.8A1.8 1.8 0 0 0 5 6.8v10.4A1.8 1.8 0 0 0 6.8 19H10M14.5 8l4 4-4 4M18.2 12H9" {...common} /></> : null}
       {name === "signup" ? <><circle cx="9" cy="8" r="3" {...common} /><path d="M3.8 19c.5-3.4 2.2-5.2 5.2-5.2s4.7 1.8 5.2 5.2M17.5 8v6M14.5 11h6" {...common} /></> : null}
+      {name === "admin" ? <><path d="M12 3.8 19 7v5.2c0 4.2-2.7 7-7 8-4.3-1-7-3.8-7-8V7l7-3.2Z" {...common} /><path d="M9.2 12.1 11 14l3.9-4.2" {...common} /></> : null}
     </svg>
   );
 }
@@ -136,6 +140,7 @@ export default function NavBar() {
   const pathname = usePathname();
   const languageRef = useRef<HTMLDivElement>(null);
   const [isAuthed, setIsAuthed] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [ready, setReady] = useState(false);
   const [lang, setLang] = useState<SiteLanguage>("ru");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -144,6 +149,7 @@ export default function NavBar() {
   useEffect(() => {
     const syncState = () => {
       setIsAuthed(Boolean(getToken()));
+      setIsAdmin(Boolean(getUser()?.isAdmin));
       setLang(getSiteLanguage());
       setReady(true);
     };
@@ -195,6 +201,7 @@ export default function NavBar() {
         { href: "/pair", label: t.pair, icon: "pair" },
         { href: "/billing", label: t.billing, icon: "billing" },
         { href: "/connect", label: t.connect, icon: "connect" },
+        ...(isAdmin ? [{ href: "/admin/ota", label: t.admin, icon: "admin" as NavIconName }] : []),
       ]
     : [
         { href: "/", label: t.home, icon: "home" },

@@ -1,6 +1,8 @@
 export type AuthUser = {
   id: string;
   email: string;
+  role?: "user" | "admin" | string;
+  isAdmin?: boolean;
 };
 
 function isBrowser(): boolean {
