@@ -226,6 +226,7 @@ const TEXT = {
     renewalCancelled: "Автопродление отключено",
     renewalActive: "Включено",
     renewalPending: "Ожидает начала",
+    renewalApprovalPending: "Не завершена",
     renewalSuspended: "Приостановлено",
     subscriptionSuccess: "Подписка оформлена. Автопродление включено",
     subscriptionPending: "Подписка создана. Доступ активируется после первого списания",
@@ -306,6 +307,7 @@ const TEXT = {
     renewalCancelled: "Automatic renewal is off",
     renewalActive: "Enabled",
     renewalPending: "Scheduled",
+    renewalApprovalPending: "Not completed",
     renewalSuspended: "Suspended",
     subscriptionSuccess: "Subscription created. Automatic renewal is enabled",
     subscriptionPending: "Subscription created. Access activates after the first charge",
@@ -386,6 +388,7 @@ const TEXT = {
     renewalCancelled: "Автоматты ұзарту өшірілді",
     renewalActive: "Қосулы",
     renewalPending: "Басталуын күтуде",
+    renewalApprovalPending: "Аяқталмаған",
     renewalSuspended: "Тоқтатылды",
     subscriptionSuccess: "Жазылым рәсімделді. Автоматты ұзарту қосулы",
     subscriptionPending: "Жазылым құрылды. Қолжетім алғашқы төлемнен кейін іске қосылады",
@@ -763,10 +766,16 @@ export default function BillingPage() {
     setPaypalError("");
     setCaptureMessage("");
     try {
-      await apiFetch(`/v1/billing/subscriptions/${subscription.id}/cancel`, {
+      const response = await apiFetch(`/v1/billing/subscriptions/${subscription.id}/cancel`, {
         method: "POST",
         body: JSON.stringify({ lang, reason: "Cancelled by customer" }),
       });
+      const updated = response?.subscription as RecurringSubscription | undefined;
+      if (updated?.id) {
+        setRecurringSubscriptions((current) =>
+          current.map((item) => (item.id === updated.id ? updated : item))
+        );
+      }
       setCaptureMessage(t.renewalCancelled);
       await loadData("soft");
     } catch (error) {
@@ -931,7 +940,9 @@ export default function BillingPage() {
                         ? t.renewalSuspended
                         : normalizedStatus === "ACTIVE"
                           ? t.renewalActive
-                          : t.renewalPending;
+                          : normalizedStatus === "APPROVAL_PENDING"
+                            ? t.renewalApprovalPending
+                            : t.renewalPending;
                     return (
                       <article key={subscription.id} className={!subscription.autoRenew ? "is-cancelled" : ""}>
                         <div>
