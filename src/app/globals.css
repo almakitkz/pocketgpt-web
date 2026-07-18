@@ -6452,3 +6452,165 @@ body {
     min-height: 112px;
   }
 }
+
+/* Phase 6: PayPal recurring subscriptions */
+.pg-billing-renewals {
+  padding: 26px 0;
+  border-bottom: 1px solid var(--pg-border);
+  animation: pg-billing-rise 520ms 145ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.pg-billing-renewal-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.pg-billing-renewal-list article {
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) auto;
+  align-items: center;
+  gap: 22px;
+  padding: 14px 16px;
+  border: 1px solid rgba(98, 214, 164, 0.16);
+  border-radius: 15px;
+  background:
+    linear-gradient(105deg, rgba(98, 214, 164, 0.04), transparent 38%),
+    rgba(12, 15, 22, 0.72);
+}
+
+.pg-billing-renewal-list article.is-cancelled {
+  border-color: var(--pg-border);
+  background: rgba(12, 15, 22, 0.58);
+}
+
+.pg-billing-renewal-list article > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.pg-billing-renewal-list article span {
+  overflow: hidden;
+  color: var(--pg-text-faint);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pg-billing-renewal-list article strong {
+  overflow: hidden;
+  color: #dfe6f1;
+  font-size: 0.82rem;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-billing-renewal-list article > div:first-child strong {
+  color: #8ee8c1;
+}
+
+.pg-billing-renewal-list article.is-cancelled > div:first-child strong {
+  color: #aab4c4;
+}
+
+.pg-billing-renewal-list button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 125, 136, 0.19);
+  border-radius: 11px;
+  padding: 0 13px;
+  color: #ffc0c6;
+  background: rgba(255, 125, 136, 0.055);
+  font-size: 0.73rem;
+  font-weight: 620;
+  cursor: pointer;
+  transition:
+    transform 170ms ease,
+    border-color 170ms ease,
+    background 170ms ease;
+}
+
+.pg-billing-renewal-list button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 125, 136, 0.35);
+  background: rgba(255, 125, 136, 0.09);
+}
+
+.pg-billing-renewal-list button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.pg-billing-renewal-list .pg-spinner {
+  width: 14px;
+  height: 14px;
+  border-color: rgba(255, 192, 198, 0.2);
+  border-top-color: #ffc0c6;
+}
+
+.pg-billing-consent > div > p {
+  margin: 7px 0 0;
+  color: #d5dce8;
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 780px) {
+  .pg-billing-renewal-list article {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .pg-billing-renewal-list button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .pg-billing-renewal-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-billing-renewal-list button {
+    grid-column: auto;
+  }
+
+  .pg-billing-consent > div > p {
+    font-size: 0.79rem;
+  }
+}
+
+.pg-billing-provider-price {
+  display: grid;
+  gap: 5px;
+  margin: -2px 0 13px;
+  padding: 10px 11px;
+  border: 1px solid rgba(119, 164, 255, 0.13);
+  border-radius: 11px;
+  background: rgba(119, 164, 255, 0.035);
+}
+
+.pg-billing-provider-price span {
+  color: var(--pg-text-faint);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.61rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pg-billing-provider-price strong {
+  color: #bdc9dc;
+  font-size: 0.69rem;
+  font-weight: 520;
+  line-height: 1.5;
+}

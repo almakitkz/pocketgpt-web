@@ -68,3 +68,25 @@ API:
 - Connect group names are saved through `POST /v1/user/connect/group/name` instead of being local-only.
 - Only the group owner can open free invitation slots.
 - The visible design was not changed in this compatibility patch.
+
+---
+
+## PayPal recurring subscriptions
+
+The billing page now uses PayPal Subscriptions rather than one-time Orders:
+
+- JavaScript SDK is loaded with `vault=true` and `intent=subscription`;
+- the selected backend-created PayPal plan is passed to `createSubscription`;
+- the user must explicitly accept payment/refund terms and monthly automatic renewal;
+- current recurring status, next charge date and auto-renewal state are displayed;
+- the user can cancel automatic renewal while keeping access through the paid period;
+- exact provider amount/currency is displayed after backend plan bootstrap;
+- KZT remains the product price, while PayPal uses USD by default.
+
+Required Vercel environment variable:
+
+```text
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=<same sandbox/live PayPal app used by backend>
+```
+
+Deploy the backend and bootstrap its PayPal plans before deploying this frontend release.

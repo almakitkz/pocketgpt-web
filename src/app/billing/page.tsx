@@ -23,6 +23,7 @@ import {
 
 const PAYMENT_TERMS_VERSION = "2026-07-17";
 const PAYMENT_REFUND_POLICY_VERSION = "2026-07-17";
+const PAYMENT_RECURRING_TERMS_VERSION = "2026-07-18";
 
 type PlanKind = "requests" | "connect" | "bundle" | string;
 type PlanCategory = "requests" | "connect" | "bundle";
@@ -37,6 +38,8 @@ type Plan = {
   connectIncluded?: boolean;
   isActive?: boolean;
   sortOrder?: number;
+  paypalAmount?: string | null;
+  paypalCurrency?: string | null;
   createdAt?: string | null;
 };
 
@@ -129,16 +132,40 @@ type PaymentItem = {
   updatedAt: string | null;
 };
 
-type CreateOrderResponse = {
-  orderId: string;
-  approveUrl?: string | null;
-  currency: string;
-  amountUsd: string;
-  device: {
-    id: string;
-    uid: string;
-    name: string;
-  };
+type RecurringSubscription = {
+  id: string;
+  deviceId: string;
+  planId: string;
+  plan: Plan | null;
+  provider: string;
+  providerSubscriptionId: string;
+  providerPlanId: string;
+  status: string;
+  autoRenew: boolean;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  nextBillingAt: string | null;
+  cancelledAt: string | null;
+  suspendedAt: string | null;
+  failedPaymentCount: number;
+  payerEmail: string | null;
+  termsAcceptedAt: string | null;
+  termsVersion: string | null;
+  refundPolicyVersion: string | null;
+  recurringTermsVersion: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+type PrepareSubscriptionResponse = {
+  paypalPlanId: string;
+  customId: string;
+  startTime: string | null;
+  billingInterval: "MONTH";
+  autoRenew: true;
+  amountKzt: number;
+  providerAmount: string;
+  providerCurrency: string;
   plan: Plan;
 };
 
@@ -186,7 +213,22 @@ const TEXT = {
     paymentTerms: "Условия оплаты",
     and: "и",
     refundPolicy: "Политику возврата",
-    termsRequired: "Подтверди согласие с условиями перед оплатой",
+    termsRequired: "Подтверди согласие с условиями и ежемесячным автопродлением",
+    recurringConsent: "Я оформляю ежемесячную подписку и разрешаю PayPal автоматически списывать стоимость тарифа каждый месяц до отмены.",
+    monthly: "в месяц",
+    paypalCharge: "Списание PayPal",
+    paypalCurrencyNotice: "PayPal проводит регулярное списание в USD. Точная сумма показывается до подтверждения; банк может применить конвертацию.",
+    autoRenewal: "Автопродление",
+    nextCharge: "Следующее списание",
+    startsAt: "Первое списание",
+    cancelRenewal: "Отключить автопродление",
+    cancelRenewalConfirm: "Отключить автоматическое продление этой подписки? Доступ сохранится до конца оплаченного периода.",
+    renewalCancelled: "Автопродление отключено",
+    renewalActive: "Включено",
+    renewalPending: "Ожидает начала",
+    renewalSuspended: "Приостановлено",
+    subscriptionSuccess: "Подписка оформлена. Автопродление включено",
+    subscriptionPending: "Подписка создана. Доступ активируется после первого списания",
     paymentSuccess: "Оплата подтверждена",
     paymentFailed: "Не удалось завершить оплату",
     promoCode: "Промокод",
@@ -251,7 +293,22 @@ const TEXT = {
     paymentTerms: "Payment Terms",
     and: "and",
     refundPolicy: "Refund Policy",
-    termsRequired: "Accept the terms before payment",
+    termsRequired: "Accept the terms and monthly automatic renewal",
+    recurringConsent: "I am starting a monthly subscription and authorize PayPal to charge the selected plan automatically every month until I cancel.",
+    monthly: "per month",
+    paypalCharge: "PayPal charge",
+    paypalCurrencyNotice: "PayPal processes the recurring charge in USD. The exact amount is shown before approval; your bank may apply currency conversion.",
+    autoRenewal: "Automatic renewal",
+    nextCharge: "Next charge",
+    startsAt: "First charge",
+    cancelRenewal: "Cancel automatic renewal",
+    cancelRenewalConfirm: "Cancel automatic renewal? Access remains available until the end of the paid period.",
+    renewalCancelled: "Automatic renewal is off",
+    renewalActive: "Enabled",
+    renewalPending: "Scheduled",
+    renewalSuspended: "Suspended",
+    subscriptionSuccess: "Subscription created. Automatic renewal is enabled",
+    subscriptionPending: "Subscription created. Access activates after the first charge",
     paymentSuccess: "Payment confirmed",
     paymentFailed: "Could not complete the payment",
     promoCode: "Promo code",
@@ -316,7 +373,22 @@ const TEXT = {
     paymentTerms: "Төлем шарттарын",
     and: "және",
     refundPolicy: "Қайтару саясатын",
-    termsRequired: "Төлем алдында шарттармен келісуді раста",
+    termsRequired: "Шарттар мен ай сайынғы автоматты ұзартуға келісуді раста",
+    recurringConsent: "Мен ай сайынғы жазылымды рәсімдеймін және PayPal-ға тариф құнын бас тартқанға дейін ай сайын автоматты түрде алуға рұқсат беремін.",
+    monthly: "айына",
+    paypalCharge: "PayPal төлемі",
+    paypalCurrencyNotice: "PayPal тұрақты төлемді USD валютасында жүргізеді. Нақты сома растау алдында көрсетіледі; банк валюта айырбастауды қолдануы мүмкін.",
+    autoRenewal: "Автоматты ұзарту",
+    nextCharge: "Келесі төлем",
+    startsAt: "Алғашқы төлем",
+    cancelRenewal: "Автоматты ұзартуды өшіру",
+    cancelRenewalConfirm: "Автоматты ұзартуды өшіру керек пе? Қолжетім төленген мерзімнің соңына дейін сақталады.",
+    renewalCancelled: "Автоматты ұзарту өшірілді",
+    renewalActive: "Қосулы",
+    renewalPending: "Басталуын күтуде",
+    renewalSuspended: "Тоқтатылды",
+    subscriptionSuccess: "Жазылым рәсімделді. Автоматты ұзарту қосулы",
+    subscriptionPending: "Жазылым құрылды. Қолжетім алғашқы төлемнен кейін іске қосылады",
     paymentSuccess: "Төлем расталды",
     paymentFailed: "Төлемді аяқтау мүмкін болмады",
     promoCode: "Промокод",
@@ -459,6 +531,16 @@ function billingErrorMessage(error: unknown, lang: SiteLanguage) {
         ? "Құрылғы табылмады"
         : "Устройство не найдено";
   }
+  if (message.includes("автопрод") || message.includes("automatic-renewal") || message.includes("overlapping")) {
+    return lang === "en"
+      ? "Automatic renewal is already configured for this device"
+      : lang === "kz"
+        ? "Бұл құрылғы үшін автоматты ұзарту бұрын бапталған"
+        : "Для этого устройства уже настроено автопродление";
+  }
+  if (message.includes("paypal") || message.includes("subscription") || message.includes("подпис")) {
+    return message && !message.includes("request failed") ? (error as Error).message : t.paymentFailed;
+  }
   return t.loadFailed;
 }
 
@@ -488,6 +570,8 @@ export default function BillingPage() {
   const [devices, setDevices] = useState<DeviceItem[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [recurringSubscriptions, setRecurringSubscriptions] = useState<RecurringSubscription[]>([]);
+  const [cancellingSubscriptionId, setCancellingSubscriptionId] = useState("");
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [category, setCategory] = useState<PlanCategory>("requests");
@@ -523,6 +607,11 @@ export default function BillingPage() {
     [plans, selectedPlanId]
   );
 
+  const selectedRecurringSubscriptions = useMemo(
+    () => recurringSubscriptions.filter((subscription) => subscription.deviceId === selectedDeviceId),
+    [recurringSubscriptions, selectedDeviceId]
+  );
+
   const categorizedPlans = useMemo(() => {
     return plans
       .filter((plan) => plan.isActive !== false)
@@ -546,10 +635,11 @@ export default function BillingPage() {
       setErrorText("");
 
       try {
-        const [devicesData, plansData, paymentsData] = await Promise.all([
+        const [devicesData, plansData, paymentsData, subscriptionsData] = await Promise.all([
           apiFetch("/v1/user/devices", { method: "GET" }),
           apiFetch("/v1/plans", { method: "GET" }),
           apiFetch("/v1/billing/history?limit=20", { method: "GET" }),
+          apiFetch("/v1/billing/subscriptions", { method: "GET" }),
         ]);
 
         const nextDevices = (devicesData.devices || []) as DeviceItem[];
@@ -559,6 +649,7 @@ export default function BillingPage() {
         setDevices(nextDevices);
         setPlans(activePlans);
         setPayments((paymentsData.payments || []) as PaymentItem[]);
+        setRecurringSubscriptions((subscriptionsData.subscriptions || []) as RecurringSubscription[]);
         lastLoadedAt.current = Date.now();
 
         setSelectedDeviceId((current) => {
@@ -663,6 +754,25 @@ export default function BillingPage() {
       setPromoError(billingErrorMessage(error, lang));
     } finally {
       setRedeemingPromo(false);
+    }
+  }
+
+  async function cancelRecurringSubscription(subscription: RecurringSubscription) {
+    if (!window.confirm(t.cancelRenewalConfirm)) return;
+    setCancellingSubscriptionId(subscription.id);
+    setPaypalError("");
+    setCaptureMessage("");
+    try {
+      await apiFetch(`/v1/billing/subscriptions/${subscription.id}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ lang, reason: "Cancelled by customer" }),
+      });
+      setCaptureMessage(t.renewalCancelled);
+      await loadData("soft");
+    } catch (error) {
+      setPaypalError(billingErrorMessage(error, lang));
+    } finally {
+      setCancellingSubscriptionId("");
     }
   }
 
@@ -807,6 +917,48 @@ export default function BillingPage() {
               </div>
             </section>
 
+            {selectedRecurringSubscriptions.length > 0 ? (
+              <section className="pg-billing-renewals" aria-label={t.autoRenewal}>
+                <div className="pg-billing-section-title">
+                  <h2>{t.autoRenewal}</h2>
+                </div>
+                <div className="pg-billing-renewal-list">
+                  {selectedRecurringSubscriptions.map((subscription) => {
+                    const normalizedStatus = subscription.status.toUpperCase();
+                    const statusLabel = !subscription.autoRenew || normalizedStatus === "CANCELLED"
+                      ? t.renewalCancelled
+                      : normalizedStatus === "SUSPENDED"
+                        ? t.renewalSuspended
+                        : normalizedStatus === "ACTIVE"
+                          ? t.renewalActive
+                          : t.renewalPending;
+                    return (
+                      <article key={subscription.id} className={!subscription.autoRenew ? "is-cancelled" : ""}>
+                        <div>
+                          <span>{localizedPlanName(subscription.plan?.name, lang)}</span>
+                          <strong>{statusLabel}</strong>
+                        </div>
+                        <div>
+                          <span>{subscription.autoRenew ? t.nextCharge : t.validUntil}</span>
+                          <strong>{formatDate(subscription.nextBillingAt || subscription.currentPeriodEnd, lang)}</strong>
+                        </div>
+                        {subscription.autoRenew ? (
+                          <button
+                            type="button"
+                            onClick={() => void cancelRecurringSubscription(subscription)}
+                            disabled={cancellingSubscriptionId === subscription.id}
+                          >
+                            {cancellingSubscriptionId === subscription.id ? <Spinner /> : null}
+                            {t.cancelRenewal}
+                          </button>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+
             <section className="pg-billing-promo">
               <div className="pg-billing-promo-copy">
                 <span>{t.promoCode}</span>
@@ -918,9 +1070,7 @@ export default function BillingPage() {
                                     : t.unlimited}
                                 </span>
                               ) : null}
-                              <span>
-                                {plan.durationDays} {t.days}
-                              </span>
+                              <span>{t.monthly}</span>
                             </div>
                           </div>
                           <div className="pg-billing-plan-price">
@@ -955,10 +1105,21 @@ export default function BillingPage() {
                   <div className="is-total">
                     <dt>{t.price}</dt>
                     <dd>
-                      {selectedPlan ? `${formatNumber(selectedPlan.priceKzt, lang)} ₸` : "—"}
+                      {selectedPlan ? `${formatNumber(selectedPlan.priceKzt, lang)} ₸ / ${t.monthly}` : "—"}
                     </dd>
                   </div>
                 </dl>
+
+                {selectedPlan ? (
+                  <div className="pg-billing-provider-price">
+                    <span>{t.paypalCharge}</span>
+                    <strong>
+                      {selectedPlan.paypalAmount && selectedPlan.paypalCurrency
+                        ? `${selectedPlan.paypalAmount} ${selectedPlan.paypalCurrency} / ${t.monthly}`
+                        : t.paypalCurrencyNotice}
+                    </strong>
+                  </div>
+                ) : null}
 
                 {paypalError ? (
                   <div className="pg-billing-checkout-message is-error" role="alert">
@@ -994,6 +1155,7 @@ export default function BillingPage() {
                         <Link href="/terms" target="_blank">{t.paymentTerms}</Link>{" "}
                         <span>{t.and}</span>{" "}
                         <Link href="/refund-policy" target="_blank">{t.refundPolicy}</Link>.
+                        <p>{t.recurringConsent}</p>
                       </div>
                     </div>
 
@@ -1006,7 +1168,8 @@ export default function BillingPage() {
                         options={{
                           clientId: paypalClientId,
                           currency: "USD",
-                          intent: "capture",
+                          intent: "subscription",
+                          vault: true,
                           components: "buttons",
                         }}
                       >
@@ -1016,10 +1179,10 @@ export default function BillingPage() {
                             style={{
                               layout: "vertical",
                               shape: "rect",
-                              label: "pay",
+                              label: "subscribe",
                               height: 45,
                             }}
-                            createOrder={async () => {
+                            createSubscription={async (_data, actions) => {
                               setPaypalError("");
                               setCaptureMessage("");
                               if (!termsAccepted) {
@@ -1027,8 +1190,8 @@ export default function BillingPage() {
                                 throw new Error("terms_not_accepted");
                               }
                               try {
-                                const response = (await apiFetch(
-                                  "/v1/billing/create-order",
+                                const prepared = (await apiFetch(
+                                  "/v1/billing/subscription/prepare",
                                   {
                                     method: "POST",
                                     body: JSON.stringify({
@@ -1036,14 +1199,28 @@ export default function BillingPage() {
                                       planId: selectedPlanId,
                                       lang,
                                       termsAccepted: true,
+                                      recurringAccepted: true,
                                       termsVersion: PAYMENT_TERMS_VERSION,
                                       refundPolicyVersion: PAYMENT_REFUND_POLICY_VERSION,
+                                      recurringTermsVersion: PAYMENT_RECURRING_TERMS_VERSION,
                                     }),
                                   }
-                                )) as CreateOrderResponse;
-                                return response.orderId;
+                                )) as PrepareSubscriptionResponse;
+                                if (!actions.subscription) throw new Error("paypal_subscription_unavailable");
+                                return actions.subscription.create({
+                                  plan_id: prepared.paypalPlanId,
+                                  custom_id: prepared.customId,
+                                  ...(prepared.startTime ? { start_time: prepared.startTime } : {}),
+                                  application_context: {
+                                    brand_name: "PocketGPT",
+                                    shipping_preference: "NO_SHIPPING",
+                                    user_action: "SUBSCRIBE_NOW",
+                                    return_url: `${window.location.origin}/billing`,
+                                    cancel_url: `${window.location.origin}/billing`,
+                                  },
+                                });
                               } catch (error) {
-                                setPaypalError(t.paymentFailed);
+                                setPaypalError(billingErrorMessage(error, lang));
                                 throw error;
                               }
                             }}
@@ -1051,26 +1228,21 @@ export default function BillingPage() {
                               try {
                                 setPaypalError("");
                                 setCaptureMessage("");
-                                await apiFetch("/v1/billing/capture-order", {
+                                const subscriptionId = data.subscriptionID;
+                                if (!subscriptionId) throw new Error("subscription_id_missing");
+                                const response = await apiFetch("/v1/billing/subscription/confirm", {
                                   method: "POST",
-                                  body: JSON.stringify({
-                                    orderId: data.orderID,
-                                    deviceId: selectedDeviceId,
-                                    planId: selectedPlanId,
-                                    lang,
-                                    termsAccepted: true,
-                                    termsVersion: PAYMENT_TERMS_VERSION,
-                                    refundPolicyVersion: PAYMENT_REFUND_POLICY_VERSION,
-                                  }),
+                                  body: JSON.stringify({ subscriptionId, lang }),
                                 });
-                                setCaptureMessage(t.paymentSuccess);
+                                const activeNow = Boolean(response?.access?.hasAccess);
+                                setCaptureMessage(activeNow ? t.subscriptionSuccess : t.subscriptionPending);
                                 setTermsAccepted(false);
                                 await loadData("soft");
-                              } catch {
-                                setPaypalError(t.paymentFailed);
+                              } catch (error) {
+                                setPaypalError(billingErrorMessage(error, lang));
                               }
                             }}
-                            onError={() => setPaypalError(t.paymentFailed)}
+                            onError={(error) => setPaypalError(billingErrorMessage(error, lang))}
                             onCancel={() => setPaypalError("")}
                           />
                         </div>
