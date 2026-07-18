@@ -215,7 +215,7 @@ const TEXT = {
     and: "и",
     refundPolicy: "Политику возврата",
     termsRequired: "Подтверди согласие с условиями и ежемесячным автопродлением",
-    recurringConsent: "Я понимаю, что подписка автоматически продлевается каждый месяц до отмены. PayPal будет списывать показанную сумму; после отмены доступ сохранится до конца оплаченного периода.",
+    recurringConsent: "Я оформляю ежемесячную подписку и разрешаю PayPal автоматически списывать показанную сумму каждый месяц до отмены. Галочка не установлена заранее. Я понимаю, что забытая отмена или отсутствие использования сами по себе не отменяют уже проведённый платёж; обязательные права по закону сохраняются.",
     monthly: "в месяц",
     paypalCharge: "Списание PayPal",
     paypalCurrencyNotice: "PayPal проводит регулярное списание в USD. Точная сумма показывается до подтверждения; банк может применить конвертацию.",
@@ -225,6 +225,7 @@ const TEXT = {
     cancelRenewal: "Отключить автопродление",
     cancelRenewalConfirm: "Отключить автоматическое продление этой подписки? Доступ сохранится до конца оплаченного периода.",
     renewalCancelled: "Автопродление отключено",
+    renewalDisabledUntil: "Доступ сохранится до конца оплаченного периода",
     renewalActive: "Включено",
     renewalPending: "Ожидает начала",
     renewalApprovalPending: "Не завершена",
@@ -306,6 +307,7 @@ const TEXT = {
     cancelRenewal: "Cancel automatic renewal",
     cancelRenewalConfirm: "Cancel automatic renewal? Access remains available until the end of the paid period.",
     renewalCancelled: "Automatic renewal is off",
+    renewalDisabledUntil: "Access remains until the end of the paid period",
     renewalActive: "Enabled",
     renewalPending: "Scheduled",
     renewalApprovalPending: "Not completed",
@@ -387,6 +389,7 @@ const TEXT = {
     cancelRenewal: "Автоматты ұзартуды өшіру",
     cancelRenewalConfirm: "Автоматты ұзартуды өшіру керек пе? Қолжетім төленген мерзімнің соңына дейін сақталады.",
     renewalCancelled: "Автоматты ұзарту өшірілді",
+    renewalDisabledUntil: "Қолжетімділік төленген кезең соңына дейін сақталады",
     renewalActive: "Қосулы",
     renewalPending: "Басталуын күтуде",
     renewalApprovalPending: "Аяқталмаған",
@@ -615,6 +618,42 @@ export default function BillingPage() {
     () => recurringSubscriptions.filter((subscription) => subscription.deviceId === selectedDeviceId),
     [recurringSubscriptions, selectedDeviceId]
   );
+
+  const visibleRecurringSubscriptions = useMemo(() => {
+    const rows = [...selectedRecurringSubscriptions].sort((a, b) => {
+      const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return bTime - aTime;
+    });
+
+    const active = rows.filter((subscription) => {
+      const status = subscription.status.toUpperCase();
+      return subscription.autoRenew && ["ACTIVE", "APPROVED", "SUSPENDED"].includes(status);
+    });
+
+    if (active.length > 0) {
+      const bundle = active.find((subscription) => subscription.plan && planKind(subscription.plan) === "bundle");
+      if (bundle) return [bundle];
+
+      const result: RecurringSubscription[] = [];
+      for (const kind of ["requests", "connect"] as PlanCategory[]) {
+        const match = active.find((subscription) => subscription.plan && planKind(subscription.plan) === kind);
+        if (match) result.push(match);
+      }
+      return result;
+    }
+
+    const now = Date.now();
+    const latestPaidCancellation = rows.find((subscription) => {
+      if (subscription.autoRenew) return false;
+      const status = subscription.status.toUpperCase();
+      if (!["CANCELLED", "EXPIRED"].includes(status)) return false;
+      const end = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).getTime() : 0;
+      return end > now;
+    });
+
+    return latestPaidCancellation ? [latestPaidCancellation] : [];
+  }, [selectedRecurringSubscriptions]);
 
   const categorizedPlans = useMemo(() => {
     return plans
@@ -927,13 +966,13 @@ export default function BillingPage() {
               </div>
             </section>
 
-            {selectedRecurringSubscriptions.length > 0 ? (
+            {visibleRecurringSubscriptions.length > 0 ? (
               <section className="pg-billing-renewals" aria-label={t.autoRenewal}>
                 <div className="pg-billing-section-title">
                   <h2>{t.autoRenewal}</h2>
                 </div>
                 <div className="pg-billing-renewal-list">
-                  {selectedRecurringSubscriptions.map((subscription) => {
+                  {visibleRecurringSubscriptions.map((subscription) => {
                     const normalizedStatus = subscription.status.toUpperCase();
                     const statusLabel = !subscription.autoRenew || normalizedStatus === "CANCELLED"
                       ? t.renewalCancelled
@@ -949,6 +988,7 @@ export default function BillingPage() {
                         <div>
                           <span>{localizedPlanName(subscription.plan?.name, lang)}</span>
                           <strong>{statusLabel}</strong>
+                          {!subscription.autoRenew ? <small>{t.renewalDisabledUntil}</small> : null}
                         </div>
                         <div>
                           <span>{subscription.autoRenew ? t.nextCharge : t.validUntil}</span>

@@ -6864,3 +6864,9 @@ body {
     font-size: 2.35rem;
   }
 }
+
+.pg-billing-renewal-list article > div:first-child small {
+  color: var(--pg-text-faint);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}

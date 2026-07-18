@@ -5,9 +5,7 @@ import { LegalDocument, type LegalSection } from "@/components/LegalDocument";
 import {
   LEGAL_CONTACT_EMAIL,
   LEGAL_EFFECTIVE_DATE,
-  LEGAL_OPERATOR_ADDRESS,
-  LEGAL_OPERATOR_ID,
-  LEGAL_OPERATOR_NAME,
+  LEGAL_SERVICE_NAME,
   PAYMENT_REFUND_POLICY_VERSION,
 } from "@/lib/legal";
 
@@ -147,7 +145,7 @@ const TEXT: Record<Lang, LegalText> = {
       "Чтобы прекратить будущие платежи, отключи автопродление до следующей даты списания. Для возврата уже списанных средств необходимо отдельное обращение; отмена подписки и возврат не являются одним действием.",
     relatedLabel: "Связанный документ",
     relatedText: "Пользовательское соглашение и условия подписки",
-    operator: "Оператор сервиса",
+    operator: "Сервис",
     contact: "Контакт для претензий",
   },
   en: {
@@ -206,7 +204,7 @@ const TEXT: Record<Lang, LegalText> = {
         title: "5. Recurring charges",
         paragraphs: [
           "Before subscribing, the user is shown that billing is monthly and automatically renewing. The exact PayPal amount, selected plan, and cancellation option are displayed before approval.",
-          "To avoid the next charge, automatic renewal must be disabled before the next billing date. The date is shown in Billing, while actual processing time may depend on PayPal and provider time zones.",
+          "To avoid the next charge, automatic renewal must be disabled before the next billing date. The date is shown in Billing, while actual processing time may depend on PayPal and provider time zones. The recorded checkbox acceptance and PayPal approval are used as evidence of consent to recurring billing.",
         ],
       },
       {
@@ -269,7 +267,7 @@ const TEXT: Record<Lang, LegalText> = {
       "To stop future payments, disable automatic renewal before the next billing date. A separate request is required for a completed charge; subscription cancellation and refund are not the same action.",
     relatedLabel: "Related document",
     relatedText: "User Agreement and Subscription Terms",
-    operator: "Service operator",
+    operator: "Service",
     contact: "Claims contact",
   },
   kz: {
@@ -391,7 +389,7 @@ const TEXT: Record<Lang, LegalText> = {
       "Болашақ төлемдерді тоқтату үшін автоматты ұзартуды келесі төлем күніне дейін өшір. Алынған төлемді қайтару үшін бөлек өтініш керек; жазылымнан бас тарту мен қайтару бір әрекет емес.",
     relatedLabel: "Байланысты құжат",
     relatedText: "Пайдаланушы келісімі және жазылым шарттары",
-    operator: "Сервис операторы",
+    operator: "Сервис",
     contact: "Шағымдар үшін байланыс",
   },
 };
@@ -429,14 +427,10 @@ export default function RefundPolicyPage() {
       relatedLabel={t.relatedLabel}
       relatedHref="/terms"
       relatedText={t.relatedText}
-      operatorLabel={t.operator}
-      operatorName={LEGAL_OPERATOR_NAME}
+      serviceLabel={t.operator}
+      serviceName={LEGAL_SERVICE_NAME}
       contactLabel={t.contact}
       contactEmail={LEGAL_CONTACT_EMAIL}
-      registrationLabel={lang === "ru" ? "Регистрационные данные" : lang === "en" ? "Registration details" : "Тіркеу деректері"}
-      operatorId={LEGAL_OPERATOR_ID}
-      addressLabel={lang === "ru" ? "Адрес" : lang === "en" ? "Address" : "Мекенжай"}
-      operatorAddress={LEGAL_OPERATOR_ADDRESS}
     />
   );
 }

@@ -5,9 +5,7 @@ import { LegalDocument, type LegalSection } from "@/components/LegalDocument";
 import {
   LEGAL_CONTACT_EMAIL,
   LEGAL_EFFECTIVE_DATE,
-  LEGAL_OPERATOR_ADDRESS,
-  LEGAL_OPERATOR_ID,
-  LEGAL_OPERATOR_NAME,
+  LEGAL_SERVICE_NAME,
   PAYMENT_TERMS_VERSION,
 } from "@/lib/legal";
 
@@ -139,8 +137,9 @@ const TEXT: Record<Lang, LegalText> = {
       {
         title: "14. Претензии, доказательства согласия и применимое право",
         paragraphs: [
-          "Для подтверждения операции PocketGPT может хранить дату согласия, версию документов, язык, аккаунт, устройство, тариф, сумму, идентификатор PayPal и статус подписки. Эти сведения используются для исполнения договора, поддержки и разрешения споров.",
-          "Претензия должна содержать email аккаунта, UID устройства, тариф, дату операции, идентификатор PayPal и описание проблемы. Ответ предоставляется в срок, установленный законодательством Республики Казахстан.",
+          "Для подтверждения явно выраженного согласия PocketGPT сохраняет связанные с оформлением записи: дату и время принятия, версию документов, язык, аккаунт, устройство, тариф, цену в тенге, сумму и валюту PayPal, текст подтверждения, его контрольную сумму, IP-адрес, сведения браузера, PayPal Subscription ID и историю webhook-событий. Эти сведения используются для исполнения договора, безопасности, поддержки и разрешения споров.",
+          "Установка незаполненной по умолчанию галочки, последующее нажатие кнопки PayPal и отдельное подтверждение подписки на стороне PayPal означают явное согласие пользователя с ежемесячным автоматическим списанием до отмены. Забытое отключение или отсутствие использования сервиса сами по себе не отменяют уже проведённый платёж, при этом обязательные права потребителя сохраняются.",
+          "Претензия направляется на опубликованный email и должна содержать email аккаунта, UID устройства, тариф, дату операции, идентификатор PayPal и описание проблемы. Ответ предоставляется в срок, установленный законодательством Республики Казахстан.",
           "К отношениям применяется законодательство Республики Казахстан. До обращения в суд стороны стремятся урегулировать спор путём претензии и обмена подтверждающими материалами.",
         ],
       },
@@ -149,7 +148,7 @@ const TEXT: Record<Lang, LegalText> = {
       "Важно: подписка продлевается и оплачивается автоматически каждый месяц, пока пользователь не отключит автопродление. Отмена прекращает будущие списания, но не отменяет уже оплаченный период.",
     relatedLabel: "Связанный документ",
     relatedText: "Политика возврата",
-    operator: "Оператор сервиса",
+    operator: "Сервис",
     contact: "Контакт для претензий",
   },
   en: {
@@ -263,8 +262,9 @@ const TEXT: Record<Lang, LegalText> = {
       {
         title: "14. Claims, consent evidence, and governing law",
         paragraphs: [
-          "PocketGPT may retain the consent date, document versions, language, account, device, plan, amount, PayPal identifier, and subscription status to perform the agreement, provide support, and resolve disputes.",
-          "A claim should include the account email, device UID, plan, transaction date, PayPal identifier, and description. A response is provided within the period required by Kazakhstan law.",
+          "To evidence explicit consent, PocketGPT retains records linked to checkout: acceptance date and time, document versions, language, account, device, plan, KZT price, PayPal amount and currency, the acceptance statement and its checksum, IP address, browser information, PayPal Subscription ID, and webhook history. These records are used to perform the agreement, maintain security, provide support, and resolve disputes.",
+          "Selecting the unchecked-by-default checkbox, pressing the PayPal button, and separately approving the subscription on PayPal constitute the user’s explicit consent to monthly automatic charges until cancellation. Forgetting to cancel or not using the service does not by itself void a completed charge, while mandatory consumer rights remain preserved.",
+          "A claim must be sent to the published email and should include the account email, device UID, plan, transaction date, PayPal identifier, and description. A response is provided within the period required by Kazakhstan law.",
           "The laws of the Republic of Kazakhstan govern the relationship. Before court proceedings, the parties should attempt to resolve the dispute through a written claim and supporting records.",
         ],
       },
@@ -273,7 +273,7 @@ const TEXT: Record<Lang, LegalText> = {
       "Important: the subscription renews and is charged automatically every month until the user disables automatic renewal. Cancellation stops future charges but does not cancel an already paid period.",
     relatedLabel: "Related document",
     relatedText: "Refund Policy",
-    operator: "Service operator",
+    operator: "Service",
     contact: "Claims contact",
   },
   kz: {
@@ -387,8 +387,9 @@ const TEXT: Record<Lang, LegalText> = {
       {
         title: "14. Шағымдар, келісім дәлелі және қолданылатын құқық",
         paragraphs: [
-          "PocketGPT келісім күні, құжат нұсқалары, тіл, аккаунт, құрылғы, тариф, сома, PayPal идентификаторы және жазылым статусын шартты орындау, қолдау және дауларды шешу үшін сақтай алады.",
-          "Шағымда аккаунт email-ы, құрылғы UID-і, тариф, операция күні, PayPal идентификаторы және мәселе сипаттамасы болуы тиіс. Жауап Қазақстан заңнамасында белгіленген мерзімде беріледі.",
+          "Айқын келісімді растау үшін PocketGPT рәсімдеуге қатысты жазбаларды сақтайды: қабылдау күні мен уақыты, құжат нұсқалары, тіл, аккаунт, құрылғы, тариф, теңгедегі баға, PayPal сомасы мен валютасы, растау мәтіні және оның бақылау сомасы, IP-мекенжай, браузер деректері, PayPal Subscription ID және webhook оқиғаларының тарихы. Бұл деректер шартты орындау, қауіпсіздік, қолдау және дауларды шешу үшін қолданылады.",
+          "Алдын ала белгіленбеген құсбелгіні қою, PayPal түймесін басу және PayPal жағында жазылымды бөлек растау пайдаланушының бас тартқанға дейін ай сайын автоматты төлемге айқын келісімін білдіреді. Бас тартуды ұмыту немесе сервисті қолданбау аяқталған төлемді өздігінен жоймайды, бірақ міндетті тұтынушы құқықтары сақталады.",
+          "Шағым жарияланған email-ға жіберіліп, аккаунт email-ын, құрылғы UID-ін, тарифті, операция күнін, PayPal идентификаторын және мәселе сипаттамасын қамтуы тиіс. Жауап Қазақстан заңнамасында белгіленген мерзімде беріледі.",
           "Қатынастарға Қазақстан Республикасының заңнамасы қолданылады. Сотқа дейін тараптар жазбаша шағым және дәлелдер арқылы дауды шешуге тырысады.",
         ],
       },
@@ -397,7 +398,7 @@ const TEXT: Record<Lang, LegalText> = {
       "Маңызды: пайдаланушы автоматты ұзартуды өшірмейінше, жазылым ай сайын автоматты түрде ұзартылып, төлем алынады. Бас тарту болашақ төлемдерді тоқтатады, бірақ төленген кезеңді жоймайды.",
     relatedLabel: "Байланысты құжат",
     relatedText: "Қайтару саясаты",
-    operator: "Сервис операторы",
+    operator: "Сервис",
     contact: "Шағымдар үшін байланыс",
   },
 };
@@ -435,14 +436,10 @@ export default function TermsPage() {
       relatedLabel={t.relatedLabel}
       relatedHref="/refund-policy"
       relatedText={t.relatedText}
-      operatorLabel={t.operator}
-      operatorName={LEGAL_OPERATOR_NAME}
+      serviceLabel={t.operator}
+      serviceName={LEGAL_SERVICE_NAME}
       contactLabel={t.contact}
       contactEmail={LEGAL_CONTACT_EMAIL}
-      registrationLabel={lang === "ru" ? "Регистрационные данные" : lang === "en" ? "Registration details" : "Тіркеу деректері"}
-      operatorId={LEGAL_OPERATOR_ID}
-      addressLabel={lang === "ru" ? "Адрес" : lang === "en" ? "Address" : "Мекенжай"}
-      operatorAddress={LEGAL_OPERATOR_ADDRESS}
     />
   );
 }

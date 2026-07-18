@@ -24,14 +24,10 @@ type LegalDocumentProps = {
   relatedLabel: string;
   relatedHref: string;
   relatedText: string;
-  operatorLabel: string;
-  operatorName: string;
+  serviceLabel: string;
+  serviceName: string;
   contactLabel: string;
-  contactEmail?: string;
-  registrationLabel?: string;
-  operatorId?: string;
-  addressLabel?: string;
-  operatorAddress?: string;
+  contactEmail: string;
 };
 
 export function LegalDocument({
@@ -47,14 +43,10 @@ export function LegalDocument({
   relatedLabel,
   relatedHref,
   relatedText,
-  operatorLabel,
-  operatorName,
+  serviceLabel,
+  serviceName,
   contactLabel,
   contactEmail,
-  registrationLabel,
-  operatorId,
-  addressLabel,
-  operatorAddress,
 }: LegalDocumentProps) {
   return (
     <main className="pg-legal-page">
@@ -100,27 +92,13 @@ export function LegalDocument({
 
         <footer className="pg-legal-footer">
           <div>
-            <span>{operatorLabel}</span>
-            <strong>{operatorName}</strong>
+            <span>{serviceLabel}</span>
+            <strong>{serviceName}</strong>
           </div>
-          {operatorId && registrationLabel ? (
-            <div>
-              <span>{registrationLabel}</span>
-              <strong>{operatorId}</strong>
-            </div>
-          ) : null}
-          {operatorAddress && addressLabel ? (
-            <div>
-              <span>{addressLabel}</span>
-              <strong>{operatorAddress}</strong>
-            </div>
-          ) : null}
-          {contactEmail ? (
-            <div>
-              <span>{contactLabel}</span>
-              <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
-            </div>
-          ) : null}
+          <div>
+            <span>{contactLabel}</span>
+            <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
+          </div>
           <Link href={relatedHref}>{relatedLabel}: {relatedText}</Link>
         </footer>
       </div>
